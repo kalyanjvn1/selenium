@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Diagnostics;
 using System.Net;
 
@@ -9,7 +7,7 @@ namespace OpenQA.Selenium.Environment
     public class RemoteSeleniumServer
     {
         private Process webserverProcess;
-        private string serverJarName = @"build\java\server\src\org\openqa\selenium\server\server-standalone.jar";
+        private string serverJarName = @"buck-out\gen\java\server\src\org\openqa\grid\selenium\selenium.jar";
         private string projectRootPath;
         private bool autoStart;
 
@@ -23,9 +21,11 @@ namespace OpenQA.Selenium.Environment
         {
             if (autoStart && (webserverProcess == null || webserverProcess.HasExited))
             {
+                string currentDirectory = EnvironmentManager.Instance.CurrentDirectory;
+                string ieDriverExe = System.IO.Path.Combine(currentDirectory, "IEDriverServer.exe");
                 webserverProcess = new Process();
                 webserverProcess.StartInfo.FileName = "java.exe";
-                webserverProcess.StartInfo.Arguments = "-jar " + serverJarName + " -port 6000";
+                webserverProcess.StartInfo.Arguments = "-Dwebdriver.ie.driver=" + ieDriverExe + " -jar " + serverJarName + " -port 6000";
                 webserverProcess.StartInfo.WorkingDirectory = projectRootPath;
                 webserverProcess.Start();
                 DateTime timeout = DateTime.Now.Add(TimeSpan.FromSeconds(30));
@@ -33,7 +33,7 @@ namespace OpenQA.Selenium.Environment
                 while (!isRunning && DateTime.Now < timeout)
                 {
                     // Poll until the webserver is correctly serving pages.
-                    HttpWebRequest request = WebRequest.Create("http://localhost:6000/selenium-server/driver?cmd=getLogMessages") as HttpWebRequest;
+                    HttpWebRequest request = WebRequest.Create("http://localhost:6000/wd/hub/status") as HttpWebRequest;
                     try
                     {
                         HttpWebResponse response = request.GetResponse() as HttpWebResponse;

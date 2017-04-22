@@ -18,12 +18,11 @@
 // Generated source.
 package org.openqa.selenium.lift;
 
+import org.hamcrest.Description;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.lift.find.BaseFinder;
 import org.openqa.selenium.lift.find.Finder;
-
-import org.hamcrest.Description;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -119,6 +118,9 @@ public class Finders {
   /**
    * A finder which returns the first element matched - such as if you have multiple elements which
    * match the finder (such as multiple links with the same text on a page etc)
+   *
+   * @param finder finder from which context to search
+   * @return finder that will return the first match
    */
   public static Finder<WebElement, WebDriver> first(final Finder<WebElement, WebDriver> finder) {
     return new BaseFinder<WebElement, WebDriver>() {
@@ -130,9 +132,8 @@ public class Finders {
           Iterator<WebElement> iter = collection.iterator();
           iter.hasNext();
           return Collections.singletonList(iter.next());
-        } else {
-          return collection;
         }
+        return collection;
       }
 
       @Override

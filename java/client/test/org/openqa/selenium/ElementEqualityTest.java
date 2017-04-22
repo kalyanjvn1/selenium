@@ -17,18 +17,16 @@
 
 package org.openqa.selenium;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import org.junit.Test;
 import org.openqa.selenium.internal.WrapsElement;
 import org.openqa.selenium.remote.RemoteWebElement;
-import org.openqa.selenium.testing.Ignore;
 import org.openqa.selenium.testing.JUnit4TestBase;
-import org.openqa.selenium.testing.JavascriptEnabled;
+import org.openqa.selenium.testing.SwitchToTopAfterTest;
 
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.openqa.selenium.testing.Ignore.Driver.MARIONETTE;
 
 public class ElementEqualityTest extends JUnit4TestBase {
 
@@ -43,7 +41,6 @@ public class ElementEqualityTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(value = MARIONETTE, reason = "Marionette does not recognize the packet type elementEquals")
   public void testDifferentElementsShouldNotBeEqual() {
     driver.get(pages.simpleTestPage);
 
@@ -70,8 +67,7 @@ public class ElementEqualityTest extends JUnit4TestBase {
     assertEquals(body.get(0).hashCode(), xbody.get(0).hashCode());
   }
 
-  @JavascriptEnabled
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
+  @SwitchToTopAfterTest
   @Test
   public void testAnElementFoundInADifferentFrameViaJsShouldHaveSameId() {
     driver.get(pages.missedJsReferencePage);

@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 
 /**
  * Default (naive) implementation of the capability matcher.
- * <p/>
+ * <p>
  * The default capability matcher will look at all the key from the request do not start with _ and
  * will try to find a node that has at least those capabilities.
  */
@@ -36,15 +36,22 @@ public class DefaultCapabilityMatcher implements CapabilityMatcher {
   private static final Logger log = Logger.getLogger(DefaultCapabilityMatcher.class.getName());
   private static final String GRID_TOKEN = "_";
 
-  // temporary fix to only check to most meaningful desiredCapability params
-  private final List<String> toConsider = new ArrayList<>();
+  protected final List<String> toConsider = new ArrayList<>();
 
   public DefaultCapabilityMatcher() {
     toConsider.add(CapabilityType.PLATFORM);
     toConsider.add(CapabilityType.BROWSER_NAME);
     toConsider.add(CapabilityType.VERSION);
-    toConsider.add("applicationName");
+    toConsider.add(CapabilityType.BROWSER_VERSION);
+    toConsider.add(CapabilityType.APPLICATION_NAME);
 
+  }
+
+  /**
+   * @param capabilityName capability name to have grid match requested with test slot
+   */
+  public void addToConsider(String capabilityName) {
+    toConsider.add(capabilityName);
   }
 
   public boolean matches(Map<String, Object> nodeCapability, Map<String, Object> requestedCapability) {
@@ -54,28 +61,40 @@ public class DefaultCapabilityMatcher implements CapabilityMatcher {
     for (String key : requestedCapability.keySet()) {
       // ignore capabilities that are targeted at grid internal for the
       // matching
-      // TODO freynaud only consider version, browser and OS for now
       if (!key.startsWith(GRID_TOKEN) && toConsider.contains(key)) {
         if (requestedCapability.get(key) != null) {
           String value = requestedCapability.get(key).toString();
+          // ignore matching 'ANY' or '*" or empty string cases
           if (!("ANY".equalsIgnoreCase(value) || "".equals(value) || "*".equals(value))) {
-            Platform requested = extractPlatform(requestedCapability.get(key));
-            // special case for platform
-            if (requested != null) {
-              Platform node = extractPlatform(nodeCapability.get(key));
-              if (node == null) {
-                return false;
-              }
-              if (!node.is(requested)) {
-                return false;
-              }
-            } else {
-              if (!requestedCapability.get(key).equals(nodeCapability.get(key))) {
-                return false;
-              }
+            switch (key) {
+              case CapabilityType.PLATFORM:
+                Platform requested = extractPlatform(requestedCapability.get(key));
+                if (requested != null) {
+                  Platform node = extractPlatform(nodeCapability.get(key));
+                  if (node == null) {
+                    return false;
+                  }
+                  if (!node.is(requested)) {
+                    return false;
+                  }
+                }
+                break;
+
+              case CapabilityType.BROWSER_VERSION:
+              case CapabilityType.VERSION:
+                // w3c uses 'browserVersion' but 2.X / 3.X use 'version'
+                // w3c name takes precedence
+                Object nodeVersion = nodeCapability.getOrDefault(CapabilityType.BROWSER_VERSION, nodeCapability.get(CapabilityType.VERSION));
+                if (!value.equals(nodeVersion)) {
+                  return false;
+                }
+                break;
+
+              default:
+                if (!requestedCapability.get(key).equals(nodeCapability.get(key))) {
+                  return false;
+                }
             }
-          } else {
-            // null value matches anything.
           }
         }
       }

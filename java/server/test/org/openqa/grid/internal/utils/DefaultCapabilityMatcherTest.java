@@ -19,13 +19,10 @@ package org.openqa.grid.internal.utils;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.openqa.grid.common.RegistrationRequest.BROWSER;
-import static org.openqa.grid.common.RegistrationRequest.PLATFORM;
-import static org.openqa.grid.common.RegistrationRequest.VERSION;
 
-import org.junit.BeforeClass;
+import com.google.common.collect.ImmutableMap;
+
 import org.junit.Test;
-import org.openqa.grid.common.RegistrationRequest;
 import org.openqa.selenium.Platform;
 import org.openqa.selenium.remote.BrowserType;
 import org.openqa.selenium.remote.CapabilityType;
@@ -36,56 +33,38 @@ import java.util.Map;
 
 public class DefaultCapabilityMatcherTest {
 
+  private DefaultCapabilityMatcher matcher = new DefaultCapabilityMatcher();
 
-  static Map<String, Object> firefox = new HashMap<>();
-  static Map<String, Object> tl = new HashMap<>();
-
-  static Map<String, Object> firefox2 = new HashMap<>();
-  static Map<String, Object> tl2 = new HashMap<>();
-
-  static Map<String, Object> exotic = new HashMap<>();
-
-
-  CapabilityMatcher helper = new DefaultCapabilityMatcher();
-
-  @BeforeClass
-  public static void build() {
-    tl.put(RegistrationRequest.APP, "A");
-    tl.put(RegistrationRequest.VERSION, null);
-    firefox.put(BROWSER, "B");
-    firefox.put(PLATFORM, "XP");
-
-    tl2.put(RegistrationRequest.APP, "A");
-    tl2.put(RegistrationRequest.VERSION, "8.5.100.7");
-
-    firefox2.put(BROWSER, "B");
-    firefox2.put(PLATFORM, "Vista");
-    firefox2.put(VERSION, "3.6");
-
-    exotic.put("numberOfHead", 2);
-  }
 
   @Test
   public void smokeTest() {
-    assertTrue(helper.matches(tl, tl));
-    assertFalse(helper.matches(tl, tl2));
-    assertTrue(helper.matches(tl2, tl));
-    assertTrue(helper.matches(tl2, tl2));
+    Map<String, Object> firefox = ImmutableMap.of(CapabilityType.BROWSER_NAME, "B", CapabilityType.PLATFORM, "XP");
+    Map<String, Object> tl = new HashMap<String, Object>() {{
+      put(CapabilityType.APPLICATION_NAME, "A");
+      put(CapabilityType.VERSION, null);
+    }};
 
-    assertTrue(helper.matches(firefox, firefox));
-    assertFalse(helper.matches(firefox, firefox2));
-    assertFalse(helper.matches(firefox2, firefox));
-    assertFalse(helper.matches(firefox, firefox2));
+    Map<String, Object> firefox2 = ImmutableMap.of(CapabilityType.BROWSER_NAME, "B", CapabilityType.PLATFORM, "Vista", CapabilityType.VERSION, "3.6");
+    Map<String, Object> tl2 = ImmutableMap.of(CapabilityType.APPLICATION_NAME, "A", CapabilityType.VERSION, "8.5.100.7");
 
-    assertFalse(helper.matches(tl, null));
-    assertFalse(helper.matches(null, null));
-    assertFalse(helper.matches(tl, firefox));
-    assertFalse(helper.matches(firefox, tl2));
+    assertTrue(matcher.matches(tl, tl));
+    assertFalse(matcher.matches(tl, tl2));
+    assertTrue(matcher.matches(tl2, tl));
+    assertTrue(matcher.matches(tl2, tl2));
+
+    assertTrue(matcher.matches(firefox, firefox));
+    assertFalse(matcher.matches(firefox, firefox2));
+    assertFalse(matcher.matches(firefox2, firefox));
+    assertFalse(matcher.matches(firefox, firefox2));
+
+    assertFalse(matcher.matches(tl, null));
+    assertFalse(matcher.matches(null, null));
+    assertFalse(matcher.matches(tl, firefox));
+    assertFalse(matcher.matches(firefox, tl2));
   }
 
   @Test
   public void platformMatchingTest() {
-    DefaultCapabilityMatcher matcher = new DefaultCapabilityMatcher();
     Platform p = Platform.WINDOWS;
 
     assertTrue(matcher.extractPlatform("WINDOWS") == p);
@@ -97,7 +76,6 @@ public class DefaultCapabilityMatcherTest {
 
   @Test
   public void nullEmptyValues() {
-    DefaultCapabilityMatcher matcher = new DefaultCapabilityMatcher();
 
     Map<String, Object> requested = new HashMap<>();
     requested.put(CapabilityType.BROWSER_NAME, BrowserType.FIREFOX);
@@ -114,5 +92,13 @@ public class DefaultCapabilityMatcherTest {
 
   }
 
+  @Test
+  public void versionTests() {
+    DefaultCapabilityMatcher matcher = new DefaultCapabilityMatcher();
 
+    assertTrue(matcher.matches(ImmutableMap.of(CapabilityType.VERSION, "50"), ImmutableMap.of(CapabilityType.VERSION, "50")));
+    assertTrue(matcher.matches(ImmutableMap.of(CapabilityType.VERSION, "50"), ImmutableMap.of(CapabilityType.BROWSER_VERSION, "50")));
+    assertTrue(matcher.matches(ImmutableMap.of(CapabilityType.BROWSER_VERSION, "50"), ImmutableMap.of(CapabilityType.VERSION, "50")));
+    assertTrue(matcher.matches(ImmutableMap.of(CapabilityType.BROWSER_VERSION, "50"), ImmutableMap.of(CapabilityType.BROWSER_VERSION, "50")));
+  }
 }

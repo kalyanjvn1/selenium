@@ -34,14 +34,21 @@ public interface HttpClient {
    * @throws IOException if an I/O error occurs.
    */
   HttpResponse execute(HttpRequest request, boolean followRedirects) throws IOException;
-
+  
   /**
-   * Creates HttpClient instances.
-   */
+	* Closes the connections associated with this client. 
+	*
+	* @throws  IOException  if an I/O error occurs.
+	*/
+  void close() throws IOException;
+
   interface Factory {
 
     /**
      * Creates a HTTP client that will send requests to the given URL.
+     *
+     * @param url URL
+     * @return HttpClient
      */
     HttpClient createClient(URL url);
   }

@@ -61,10 +61,9 @@ public class CookieServlet extends HttpServlet {
       if (secure != null) {
         newCookie.setSecure(Boolean.parseBoolean(secure));
       }
-      // TODO: Requires servlet-api 3.0+
-      //if (httpOnly != null) {
-      //  newCookie.setHttpOnly(Boolean.parseBoolean(httpOnly));
-      //}
+      if (httpOnly != null) {
+        newCookie.setHttpOnly(Boolean.parseBoolean(httpOnly));
+      }
       response.addCookie(newCookie);
 
       response.getOutputStream().println(
@@ -84,12 +83,13 @@ public class CookieServlet extends HttpServlet {
           String.format(RESPONSE_STRING, "Cookie deleted", name));
 
     } else if ("deleteAll".equals(action)) {
-      for (Cookie cookie : request.getCookies()) {
-        System.out.println(cookie);
-        cookie.setValue("");
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+      if (request.getCookies() != null) {
+        for (Cookie cookie : request.getCookies()) {
+          cookie.setValue("");
+          cookie.setPath("/");
+          cookie.setMaxAge(0);
+          response.addCookie(cookie);
+        }
       }
       response.getOutputStream().println(
           String.format(RESPONSE_STRING, "All cookies deleted", ""));

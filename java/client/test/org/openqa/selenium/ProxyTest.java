@@ -18,18 +18,23 @@
 
 package org.openqa.selenium;
 
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.openqa.selenium.remote.CapabilityType.PROXY;
+import static org.openqa.selenium.testing.TestUtilities.catchThrowable;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.openqa.selenium.Proxy.ProxyType;
-import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.remote.BeanToJsonConverter;
 import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.JsonToBeanConverter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,88 +61,44 @@ public class ProxyTest {
 
   @Test
   public void testCanNotChangeAlreadyInitializedProxyType() {
-    Proxy proxy = new Proxy();
+    final Proxy proxy = new Proxy();
     proxy.setProxyType(ProxyType.DIRECT);
 
-    try {
-      proxy.setAutodetect(true);
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t = catchThrowable(() -> proxy.setAutodetect(true));
+    assertThat(t, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setSocksPassword("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t2 = catchThrowable(() -> proxy.setSocksPassword(""));
+    assertThat(t2, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setSocksUsername("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t3 = catchThrowable(() -> proxy.setSocksUsername(""));
+    assertThat(t3, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setSocksProxy("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t4 = catchThrowable(() -> proxy.setSocksProxy(""));
+    assertThat(t4, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setFtpProxy("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t5 = catchThrowable(() -> proxy.setFtpProxy(""));
+    assertThat(t5, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setHttpProxy("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t6 = catchThrowable(() -> proxy.setHttpProxy(""));
+    assertThat(t6, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setNoProxy("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t7 = catchThrowable(() -> proxy.setNoProxy(""));
+    assertThat(t7, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setProxyAutoconfigUrl("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t8 = catchThrowable(() -> proxy.setProxyAutoconfigUrl(""));
+    assertThat(t8, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setProxyType(ProxyType.SYSTEM);
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t9 = catchThrowable(() -> proxy.setProxyType(ProxyType.SYSTEM));
+    assertThat(t9, instanceOf(IllegalStateException.class));
 
-    try {
-      proxy.setSslProxy("");
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t10 = catchThrowable(() -> proxy.setSslProxy(""));
+    assertThat(t10, instanceOf(IllegalStateException.class));
 
-    proxy = new Proxy();
-    proxy.setProxyType(ProxyType.AUTODETECT);
+    final Proxy proxy2 = new Proxy();
+    proxy2.setProxyType(ProxyType.AUTODETECT);
 
-    try {
-      proxy.setProxyType(ProxyType.SYSTEM);
-      fail("Didn't throw expected assertion");
-    } catch (IllegalStateException e) {
-      // Success - expected.
-    }
+    Throwable t11 = catchThrowable(() -> proxy2.setProxyType(ProxyType.SYSTEM));
+    assertThat(t11, instanceOf(IllegalStateException.class));
   }
 
   @Test
@@ -204,7 +165,7 @@ public class ProxyTest {
 
 
   @Test
-  public void testInitializationManualProxy() {
+  public void manualProxyFromMap() {
     Map<String, String> proxyData = new HashMap<>();
     proxyData.put("proxyType", "manual");
     proxyData.put("httpProxy", "http.proxy:1234");
@@ -231,7 +192,32 @@ public class ProxyTest {
   }
 
   @Test
-  public void testInitializationPACProxy() {
+  public void manualProxyToJson() {
+    Proxy proxy = new Proxy();
+    proxy.setProxyType(ProxyType.MANUAL);
+    proxy.setHttpProxy("http.proxy:1234");
+    proxy.setFtpProxy("ftp.proxy");
+    proxy.setSslProxy("ssl.proxy");
+    proxy.setNoProxy("localhost,127.0.0.*");
+    proxy.setSocksProxy("socks.proxy:65555");
+    proxy.setSocksUsername("test1");
+    proxy.setSocksPassword("test2");
+
+    Map<String, Object> json = proxy.toJson();
+
+    assertEquals("manual", json.get("proxyType"));
+    assertEquals("ftp.proxy", json.get("ftpProxy"));
+    assertEquals("http.proxy:1234", json.get("httpProxy"));
+    assertEquals("ssl.proxy", json.get("sslProxy"));
+    assertEquals("socks.proxy:65555", json.get("socksProxy"));
+    assertEquals("test1", json.get("socksUsername"));
+    assertEquals("test2", json.get("socksPassword"));
+    assertEquals("localhost,127.0.0.*", json.get("noProxy"));
+    assertEquals(8, json.entrySet().size());
+  }
+
+  @Test
+  public void pacProxyFromMap() {
     Map<String, String> proxyData = new HashMap<>();
     proxyData.put("proxyType", "PAC");
     proxyData.put("proxyAutoconfigUrl", "http://aaa/bbb.pac");
@@ -252,7 +238,20 @@ public class ProxyTest {
   }
 
   @Test
-  public void testInitializationAutodetectProxy() {
+  public void pacProxyToJson() {
+    Proxy proxy = new Proxy();
+    proxy.setProxyType(ProxyType.PAC);
+    proxy.setProxyAutoconfigUrl("http://aaa/bbb.pac");
+
+    Map<String, Object> json = proxy.toJson();
+
+    assertEquals("pac", json.get("proxyType"));
+    assertEquals("http://aaa/bbb.pac", json.get("proxyAutoconfigUrl"));
+    assertEquals(2, json.entrySet().size());
+  }
+
+  @Test
+  public void autodetectProxyFromMap() {
     Map<String, Object> proxyData = new HashMap<>();
     proxyData.put("proxyType", "AUTODETECT");
     proxyData.put("autodetect", true);
@@ -273,7 +272,20 @@ public class ProxyTest {
   }
 
   @Test
-  public void testInitializationSystemProxy() {
+  public void autodetectProxyToJson() {
+    Proxy proxy = new Proxy();
+    proxy.setProxyType(ProxyType.AUTODETECT);
+    proxy.setAutodetect(true);
+
+    Map<String, ?> json = proxy.toJson();
+
+    assertEquals("autodetect", json.get("proxyType"));
+    assertTrue((Boolean) json.get("autodetect"));
+    assertEquals(2, json.entrySet().size());
+  }
+
+  @Test
+  public void systemProxyFromMap() {
     Map<String, String> proxyData = new HashMap<>();
     proxyData.put("proxyType", "system");
 
@@ -293,7 +305,18 @@ public class ProxyTest {
   }
 
   @Test
-  public void testInitializationDirectProxy() {
+  public void systemProxyToJson() {
+    Proxy proxy = new Proxy();
+    proxy.setProxyType(ProxyType.SYSTEM);
+
+    Map<String, Object> json = proxy.toJson();
+
+    assertEquals("system", json.get("proxyType"));
+    assertEquals(1, json.entrySet().size());
+  }
+
+  @Test
+  public void directProxyFromMap() {
     Map<String, String> proxyData = new HashMap<>();
     proxyData.put("proxyType", "DIRECT");
 
@@ -313,18 +336,45 @@ public class ProxyTest {
   }
 
   @Test
+  public void directProxyToJson() {
+    Proxy proxy = new Proxy();
+    proxy.setProxyType(ProxyType.DIRECT);
+
+    Map<String, Object> json = proxy.toJson();
+
+    assertEquals("direct", json.get("proxyType"));
+    assertEquals(1, json.entrySet().size());
+  }
+
+  @Test
   public void constructingWithNullKeysWorksAsExpected() {
     Map<String, String> rawProxy = new HashMap<>();
     rawProxy.put("ftpProxy", null);
     rawProxy.put("httpProxy", "http://www.example.com");
     rawProxy.put("autodetect", null);
     DesiredCapabilities caps = new DesiredCapabilities();
-    caps.setCapability(CapabilityType.PROXY, rawProxy);
+    caps.setCapability(PROXY, rawProxy);
 
     Proxy proxy = Proxy.extractFrom(caps);
 
     assertNull(proxy.getFtpProxy());
     assertFalse(proxy.isAutodetect());
     assertEquals("http://www.example.com", proxy.getHttpProxy());
+  }
+
+  @Test
+  @Ignore
+  public void serialiazesAndDeserializesWithoutError() {
+    Proxy proxy = new Proxy();
+    proxy.setProxyAutoconfigUrl("http://www.example.com/config.pac");
+
+    DesiredCapabilities caps = new DesiredCapabilities();
+    caps.setCapability(PROXY, proxy);
+
+    String rawJson = new BeanToJsonConverter().convert(caps);
+    Capabilities converted = new JsonToBeanConverter().convert(Capabilities.class, rawJson);
+
+    Object returnedProxy = converted.getCapability(PROXY);
+    assertTrue(returnedProxy instanceof Proxy);
   }
 }

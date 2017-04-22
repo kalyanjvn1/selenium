@@ -41,24 +41,22 @@ public class RegistryTestHelper {
         Integer i = r.getAllProxies().size();
         if (i != nodeNumber) {
           return null;
-        } else {
-          return i;
         }
+        return i;
       }
     });
   }
 
 
-  public static void waitForActiveTestSessionCount(final Registry r, final int activeTestSesssions) {
+  public static void waitForActiveTestSessionCount(final Registry r, final int activeTestSessions) {
     newWait().until(new Function<Object, Integer>() {
       @Override
       public Integer apply(Object input) {
         Integer i = r.getActiveSessions().size();
-        if (i != activeTestSesssions) {
+        if (i != activeTestSessions) {
           return null;
-        } else {
-          return i;
         }
+        return i;
       }
     });
   }
@@ -70,9 +68,8 @@ public class RegistryTestHelper {
         Integer i = r.getNewSessionRequestCount();
         if (i != newSessionRequestCount) {
           return null;
-        } else {
-          return i;
         }
+        return i;
       }
     });
   }

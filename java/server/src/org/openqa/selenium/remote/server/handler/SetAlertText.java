@@ -30,7 +30,12 @@ public class SetAlertText extends WebDriverHandler<Void> implements JsonParamete
   }
 
   public void setJsonParameters(Map<String, Object> allParameters) throws Exception {
-    text = (String) allParameters.get("text");
+    if (allParameters.containsKey("text")) {
+      text = (String) allParameters.get("text");
+    } else {
+      // w3c uses 'message' instead of 'text'
+      text = (String) allParameters.get("message");
+    }
   }
 
   @Override

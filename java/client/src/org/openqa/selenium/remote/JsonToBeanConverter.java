@@ -19,6 +19,7 @@ package org.openqa.selenium.remote;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
@@ -34,8 +35,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 
 public class JsonToBeanConverter {
+
+  private ErrorCodes errorCodes = new ErrorCodes();
 
   public <T> T convert(Class<T> clazz, Object source) throws JsonException {
     try {
@@ -47,7 +52,7 @@ public class JsonToBeanConverter {
 
   @SuppressWarnings("unchecked")
   private <T> T convert(Class<T> clazz, Object source, int depth) {
-    if (source == null) {
+    if (source == null || source instanceof JsonNull) {
       return null;
     }
 
@@ -112,20 +117,26 @@ public class JsonToBeanConverter {
                         ? (JsonObject) source
                         : new JsonParser().parse((String) source).getAsJsonObject();
 
+      if (json.has("error") && ! json.get("error").isJsonNull()) {
+        String state = json.get("error").getAsString();
+        response.setState(state);
+        response.setStatus(errorCodes.toStatus(state, Optional.empty()));
+        response.setValue(convert(Object.class, json.get("message")));
+      }
       if (json.has("state") && ! json.get("state").isJsonNull()) {
         String state = json.get("state").getAsString();
         response.setState(state);
-        response.setStatus(ErrorCodes.toStatus(state));
+        response.setStatus(errorCodes.toStatus(state, Optional.empty()));
       }
       if (json.has("status") && ! json.get("status").isJsonNull()) {
         JsonElement status = json.get("status");
         if (status.getAsJsonPrimitive().isString()) {
           String state = status.getAsString();
           response.setState(state);
-          response.setStatus(ErrorCodes.toStatus(state));
+          response.setStatus(errorCodes.toStatus(state, Optional.empty()));
         } else {
           int intStatus = status.getAsInt();
-          response.setState(ErrorCodes.toState(intStatus));
+          response.setState(errorCodes.toState(intStatus));
           response.setStatus(intStatus);
         }
       }
@@ -133,7 +144,11 @@ public class JsonToBeanConverter {
         response.setSessionId(json.get("sessionId").getAsString());
       }
 
-      response.setValue(convert(Object.class, json.get("value")));
+      if (json.has("value")) {
+        response.setValue(convert(Object.class, json.get("value")));
+      } else {
+        response.setValue(convert(Object.class, json));
+      }
 
       return (T) response;
     }
@@ -144,9 +159,8 @@ public class JsonToBeanConverter {
           ? new JsonParser().parse((String) source).getAsJsonObject() : (JsonElement) source;
       if (json.isJsonPrimitive()) {
         return (T) new SessionId(json.getAsString());
-      } else {
-        return (T) new SessionId(json.getAsJsonObject().get("value").getAsString());
       }
+      return (T) new SessionId(json.getAsJsonObject().get("value").getAsString());
     }
 
     if (Capabilities.class.isAssignableFrom(clazz)) {
@@ -187,16 +201,16 @@ public class JsonToBeanConverter {
     if (source instanceof JsonElement) {
       JsonElement element = (JsonElement) source;
 
+      if (element.isJsonNull()) {
+        return null;
+      }
+
       if (element.isJsonPrimitive()) {
         return (T) convertJsonPrimitive(element.getAsJsonPrimitive());
       }
 
       if (element.isJsonArray()) {
         return (T) convertList(element.getAsJsonArray(), depth);
-      }
-
-      if (element.isJsonNull()) {
-        return null;
       }
 
       if (element.isJsonObject()) {
@@ -227,19 +241,14 @@ public class JsonToBeanConverter {
     return null;
   }
 
-  private Object convertJsonPrimitive(JsonElement json) {
-    return convertJsonPrimitive(json.getAsJsonPrimitive());
-  }
-
   private Object convertJsonPrimitive(JsonPrimitive json) {
     if (json.isBoolean()) {
       return json.getAsBoolean();
     } else if (json.isNumber()) {
       if (json.getAsLong() == json.getAsDouble()) {
         return json.getAsLong();
-      } else {
-        return json.getAsDouble();
       }
+      return json.getAsDouble();
     } else if (json.isString()) {
       return json.getAsString();
     } else {
@@ -247,24 +256,27 @@ public class JsonToBeanConverter {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private Enum convertEnum(Class clazz, Object text) {
-    if (clazz.isEnum()) {
-      if (text instanceof JsonElement) {
-        return Enum.valueOf(clazz, (String) convertJsonPrimitive((JsonElement) text));
-      } else {
-        return Enum.valueOf(clazz, String.valueOf(text));
+  private Enum<?> convertEnum(Class<?> clazz, Object text) {
+    String toConvert = text instanceof JsonElement ?
+                       ((JsonElement) text).getAsString() : String.valueOf(text);
+
+    Function<Class<?>, Enum<?>> asEnum = (c) -> {
+      for (Object value : c.getEnumConstants()) {
+        if (value.toString().equalsIgnoreCase(toConvert)) {
+          return (Enum<?>) value;
+        }
       }
+      throw new IllegalArgumentException("Unable to map to enum: " + clazz + ", " + text);
+    };
+
+    if (clazz.isEnum()) {
+      return asEnum.apply(clazz);
     }
 
-    Class[] allClasses = clazz.getClasses();
-    for (Class current : allClasses) {
+    Class<?>[] allClasses = clazz.getClasses();
+    for (Class<?> current : allClasses) {
       if (current.isEnum()) {
-        if (text instanceof JsonElement) {
-          return Enum.valueOf(current, (String) convertJsonPrimitive((JsonElement) text));
-        } else {
-          return Enum.valueOf(current, String.valueOf(text));
-        }
+        return asEnum.apply(current);
       }
     }
 

@@ -18,28 +18,30 @@
 package org.openqa.selenium;
 
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.openqa.selenium.support.ui.ExpectedConditions.titleIs;
-import static org.openqa.selenium.testing.Ignore.Driver.CHROME;
-import static org.openqa.selenium.testing.Ignore.Driver.HTMLUNIT;
-import static org.openqa.selenium.testing.Ignore.Driver.IE;
-import static org.openqa.selenium.testing.Ignore.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Ignore.Driver.PHANTOMJS;
-import static org.openqa.selenium.testing.Ignore.Driver.SAFARI;
+import static org.openqa.selenium.testing.Driver.ALL;
+import static org.openqa.selenium.testing.Driver.CHROME;
+import static org.openqa.selenium.testing.Driver.HTMLUNIT;
+import static org.openqa.selenium.testing.Driver.IE;
+import static org.openqa.selenium.testing.Driver.MARIONETTE;
+import static org.openqa.selenium.testing.Driver.PHANTOMJS;
+import static org.openqa.selenium.testing.Driver.SAFARI;
+import static org.openqa.selenium.testing.TestUtilities.catchThrowable;
 
 import org.junit.Test;
 import org.openqa.selenium.interactions.MoveTargetOutOfBoundsException;
 import org.openqa.selenium.testing.Ignore;
 import org.openqa.selenium.testing.JUnit4TestBase;
-import org.openqa.selenium.testing.JavascriptEnabled;
+import org.openqa.selenium.testing.SwitchToTopAfterTest;
 
-@Ignore(value = {HTMLUNIT}, reason = "HtmlUnit: Scrolling requires rendering")
+@Ignore(value = HTMLUNIT, reason = "Scrolling requires rendering")
 public class ClickScrollingTest extends JUnit4TestBase {
-  @JavascriptEnabled
+
   @Test
   public void testClickingOnAnchorScrollsPage() {
     String scrollScript = "";
@@ -55,8 +57,7 @@ public class ClickScrollingTest extends JUnit4TestBase {
 
     driver.findElement(By.partialLinkText("last speech")).click();
 
-    long yOffset = (Long) ((JavascriptExecutor) driver)
-        .executeScript(scrollScript);
+    long yOffset = (Long) ((JavascriptExecutor) driver).executeScript(scrollScript);
 
     // Focusing on to click, but not actually following,
     // the link will scroll it in to view, which is a few pixels further than 0
@@ -69,11 +70,7 @@ public class ClickScrollingTest extends JUnit4TestBase {
     driver.get(url);
 
     WebElement link = driver.findElement(By.id("link"));
-    try {
-      link.click();
-    } catch (MoveTargetOutOfBoundsException e) {
-      fail("Should not be out of bounds: " + e.getMessage());
-    }
+    link.click();
   }
 
   @Test
@@ -87,9 +84,9 @@ public class ClickScrollingTest extends JUnit4TestBase {
     assertEquals("line8", driver.findElement(By.id("clicked")).getText());
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {CHROME}, reason = "Chrome: failed")
   @Test
+  @Ignore(value = CHROME, reason = "failed")
+  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/662")
   public void testShouldBeAbleToClickOnAnElementHiddenByDoubleOverflow() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_double_overflow_auto.html"));
 
@@ -97,9 +94,8 @@ public class ClickScrollingTest extends JUnit4TestBase {
     wait.until(titleIs("Clicked Successfully!"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {SAFARI}, reason = "Safari: failed")
   @Test
+  @Ignore(value = SAFARI, reason = "failed")
   public void testShouldBeAbleToClickOnAnElementHiddenByYOverflow() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_y_overflow_auto.html"));
 
@@ -107,7 +103,6 @@ public class ClickScrollingTest extends JUnit4TestBase {
     wait.until(titleIs("Clicked Successfully!"));
   }
 
-  @JavascriptEnabled
   @Test
   public void testShouldNotScrollOverflowElementsWhichAreVisible() {
     driver.get(appServer.whereIs("scroll2.html"));
@@ -119,11 +114,13 @@ public class ClickScrollingTest extends JUnit4TestBase {
     assertEquals("Should not have scrolled", 0, yOffset);
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {CHROME, PHANTOMJS, SAFARI, MARIONETTE},
-      reason = "Safari: button1 is scrolled to the bottom edge of the view, " +
-          "so additonal scrolling is still required for button2")
   @Test
+  @Ignore(CHROME)
+  @Ignore(PHANTOMJS)
+  @Ignore(value = SAFARI,
+      reason = "Safari: button1 is scrolled to the bottom edge of the view, " +
+               "so additonal scrolling is still required for button2")
+  @Ignore(MARIONETTE)
   public void testShouldNotScrollIfAlreadyScrolledAndElementIsInView() {
     driver.get(appServer.whereIs("scroll3.html"));
     driver.findElement(By.id("button1")).click();
@@ -133,24 +130,25 @@ public class ClickScrollingTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldBeAbleToClickRadioButtonScrolledIntoView() {
     driver.get(appServer.whereIs("scroll4.html"));
     driver.findElement(By.id("radio")).click();
     // If we don't throw, we're good
   }
 
-  @Ignore(value = {IE, MARIONETTE}, reason = "IE has special overflow handling")
   @Test
+  @Ignore(value = IE, reason = "IE has special overflow handling")
+  @Ignore(MARIONETTE)
   public void testShouldScrollOverflowElementsIfClickPointIsOutOfViewButElementIsInView() {
     driver.get(appServer.whereIs("scroll5.html"));
     driver.findElement(By.id("inner")).click();
     assertEquals("clicked", driver.findElement(By.id("clicked")).getText());
   }
 
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
+  @SwitchToTopAfterTest
   @Test
-  @Ignore(value = {SAFARI, MARIONETTE}, reason = "others: not tested")
+  @Ignore(SAFARI)
+  @Ignore(MARIONETTE)
   public void testShouldBeAbleToClickElementInAFrameThatIsOutOfView() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_frame_out_of_view.html"));
     driver.switchTo().frame("frame");
@@ -159,9 +157,9 @@ public class ClickScrollingTest extends JUnit4TestBase {
     assertTrue(element.isSelected());
   }
 
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
+  @SwitchToTopAfterTest
   @Test
-  @Ignore(value = {SAFARI, MARIONETTE}, reason = "not tested")
+  @Ignore(SAFARI)
   public void testShouldBeAbleToClickElementThatIsOutOfViewInAFrame() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_scrolling_frame.html"));
     driver.switchTo().frame("scrolling_frame");
@@ -170,19 +168,20 @@ public class ClickScrollingTest extends JUnit4TestBase {
     assertTrue(element.isSelected());
   }
 
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
-  @Test(expected = MoveTargetOutOfBoundsException.class)
-  @Ignore(reason = "All tested browses scroll non-scrollable frames")
+  @SwitchToTopAfterTest
+  @Test
+  @Ignore(value = ALL, reason = "All tested browses scroll non-scrollable frames")
   public void testShouldNotBeAbleToClickElementThatIsOutOfViewInANonScrollableFrame() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_non_scrolling_frame.html"));
     driver.switchTo().frame("scrolling_frame");
     WebElement element = driver.findElement(By.name("scroll_checkbox"));
-    element.click();
+    Throwable t = catchThrowable(element::click);
+    assertThat(t, instanceOf(MoveTargetOutOfBoundsException.class));
   }
 
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
+  @SwitchToTopAfterTest
   @Test
-  @Ignore(value = {SAFARI, MARIONETTE}, reason = "not tested")
+  @Ignore(SAFARI)
   public void testShouldBeAbleToClickElementThatIsOutOfViewInAFrameThatIsOutOfView() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_scrolling_frame_out_of_view.html"));
     driver.switchTo().frame("scrolling_frame");
@@ -191,9 +190,10 @@ public class ClickScrollingTest extends JUnit4TestBase {
     assertTrue(element.isSelected());
   }
 
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
+  @SwitchToTopAfterTest
   @Test
-  @Ignore(value = {SAFARI, MARIONETTE}, reason = "not tested")
+  @Ignore(SAFARI)
+  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/651")
   public void testShouldBeAbleToClickElementThatIsOutOfViewInANestedFrame() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_nested_scrolling_frames.html"));
     driver.switchTo().frame("scrolling_frame");
@@ -203,9 +203,10 @@ public class ClickScrollingTest extends JUnit4TestBase {
     assertTrue(element.isSelected());
   }
 
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
+  @SwitchToTopAfterTest
   @Test
-  @Ignore(value = {SAFARI, MARIONETTE}, reason = "not tested")
+  @Ignore(SAFARI)
+  @Ignore(value = MARIONETTE, issue = "https://github.com/mozilla/geckodriver/issues/651")
   public void testShouldBeAbleToClickElementThatIsOutOfViewInANestedFrameThatIsOutOfView() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_nested_scrolling_frames_out_of_view.html"));
     driver.switchTo().frame("scrolling_frame");
@@ -215,7 +216,6 @@ public class ClickScrollingTest extends JUnit4TestBase {
     assertTrue(element.isSelected());
   }
 
-  @JavascriptEnabled
   @Test
   public void testShouldNotScrollWhenGettingElementSize() {
     driver.get(appServer.whereIs("scroll3.html"));
@@ -228,9 +228,10 @@ public class ClickScrollingTest extends JUnit4TestBase {
     return (Long)((JavascriptExecutor)driver).executeScript("return document.body.scrollTop;");
   }
 
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
+  @SwitchToTopAfterTest
   @Test
-  @Ignore(value = {SAFARI, MARIONETTE}, reason = "Not tested")
+  @Ignore(SAFARI)
+  @Ignore(MARIONETTE)
   public void testShouldBeAbleToClickElementInATallFrame() {
     driver.get(appServer.whereIs("scrolling_tests/page_with_tall_frame.html"));
     driver.switchTo().frame("tall_frame");
@@ -238,5 +239,4 @@ public class ClickScrollingTest extends JUnit4TestBase {
     element.click();
     assertTrue(element.isSelected());
   }
-
 }

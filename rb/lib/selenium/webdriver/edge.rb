@@ -24,21 +24,15 @@ require 'selenium/webdriver/edge/bridge'
 
 module Selenium
   module WebDriver
-
     module Edge
       def self.driver_path=(path)
-        Service.executable_path = path
-      end
-
-      def self.path=(path)
         Platform.assert_executable path
-        @path = path
+        @driver_path = path
       end
 
-      def self.path
-        @path ||= nil
+      def self.driver_path(warning = true)
+        @driver_path ||= nil
       end
-
     end # Edge
   end # WebDriver
 end # Selenium

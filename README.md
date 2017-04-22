@@ -1,13 +1,18 @@
-# Selenium
+Selenium [![Build Status](https://travis-ci.org/SeleniumHQ/selenium.svg)](//travis-ci.org/SeleniumHQ/selenium)
+========
+[![SeleniumHQ](http://www.seleniumhq.org/images/big-logo.png)](http://www.seleniumhq.org/)
 
-Selenium is an umbrella project encapsulating a variety of tools and 
-libraries enabling web browser automation. Selenium specifically 
-provides infrastructure for the [W3C WebDriver specification](https://dvcs.w3.org/hg/webdriver/raw-file/tip/webdriver-spec.html) 
-— a platform and language-neutral coding interface compatible with all 
+
+
+
+Selenium is an umbrella project encapsulating a variety of tools and
+libraries enabling web browser automation. Selenium specifically
+provides infrastructure for the [W3C WebDriver specification](https://dvcs.w3.org/hg/webdriver/raw-file/tip/webdriver-spec.html)
+— a platform and language-neutral coding interface compatible with all
 major web browsers.
 
-The project is made possible by volunteer contributors who've 
-generously donated thousands of hours in code development and upkeep. 
+The project is made possible by volunteer contributors who've
+generously donated thousands of hours in code development and upkeep.
 
 Selenium's source code is made available under the [Apache 2.0 license](https://github.com/SeleniumHQ/selenium/blob/master/LICENSE).
 
@@ -28,7 +33,7 @@ API documentation:
 
 ## Pull Requests
 
-Please read [CONTRIBUTING.md](https://github.com/SeleniumHQ/selenium/blob/master/CONTRIBUTING.md) 
+Please read [CONTRIBUTING.md](https://github.com/SeleniumHQ/selenium/blob/master/CONTRIBUTING.md)
 before submitting your pull requests.
 
 ## Building
@@ -42,10 +47,14 @@ see directories carrying multiple build directive files.
 For reference, crazyfun's build files are named *build.desc*,
 while buck's are named simply *BUCK*.
 
+Before building ensure that you have the
+[most recent `chromedriver` ](https://sites.google.com/a/chromium.org/chromedriver/downloads)
+available on your `$PATH`. You may have to update this from time to time.
+
 To build Selenium, in the same directory as this file:
 
 ```sh
-./go
+./go build
 ```
 
 The order of building modules is determined by the build system.
@@ -76,7 +85,7 @@ To list all available targets, you can append the `-T` flag:
 
 Although the plan is to return to a vanilla build of Buck as soon as
 possible, we currently use a fork hosted at
-https://github.com/shs96c/buck To build using Buck, first clone that
+https://github.com/SeleniumHQ/buck To build using Buck, first clone that
 repo and build using ant. Then add Buck's "bin" directory to your
 PATH.
 
@@ -110,7 +119,7 @@ from https://github.com/facebook/watchman
 
 ## Requirements
 
-* [Java 7 JDK](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+* [Java 8 JDK](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 * `java` and `jar` on the PATH
 
 Although the build system is based on rake it's **strongly advised**
@@ -118,13 +127,13 @@ to rely on the version of JRuby in `third_party/` that is invoked by
 `go`.  The only developer type who would want to deviate from this is
 the “build maintainer” who's experimenting with a JRuby upgrade.
 
-Note that all Selenium Java artefacts are **built with Java 7
-(mandatory)**.  Those _will work with any Java >= 7_.
+Note that all Selenium Java artefacts are **built with Java 8
+(mandatory)**.  Those _will work with any Java >= 8_.
 
 ### Optional Requirements
 
 * Python 2.6.x to 2.7 (without this, Python tests will be skipped)
-* Ruby 1.9.3
+* Ruby 2.0
 
 ### Internet Explorer Driver
 
@@ -135,16 +144,16 @@ you also need:
 * [Visual Studio 2008](http://www.microsoft.com/visualstudio/en-gb/products/2008-editions)
 * 32 and 64 bit cross compilers
 
-The build will work on any platform, but the tests for IE will be 
+The build will work on any platform, but the tests for IE will be
 skipped silently, if you are not building on Windows.
 
 ## Common Tasks
 
-For an express build of the binaries we release run the following from 
+For an express build of the binaries we release run the following from
 the directory containing the `Rakefile`:
 
 ```sh
-./go clean release
+./go release
 ```
 
 All build output is placed under the `build` directory. The output can
@@ -239,11 +248,6 @@ can run all the javascript tests using:
 
 ## Maven POM files
 
-Ignore the [Maven](http://maven.apache.org/) POM file present in the
-same directory. It is only used for releasing to jars to Maven
-Repository (public or local), and is not considered the main build
-mechanism.
-
 Here is the [public Selenium Maven
 repository](http://repo1.maven.org/maven2/org/seleniumhq/selenium/).
 
@@ -286,8 +290,8 @@ targets.
 ## Maven _per se_
 
 If it is not clear already, Selenium is not built with Maven, it is
-built with [Crazy-Fun](https://github.com/SeleniumHQ/selenium/wiki/Crazy-Fun-Build) 
-though that is invoked with *go* as outlined above so you do not really 
+built with [Buck](https://github.com/SeleniumHQ/buck),
+though that is invoked with *go* as outlined above so you do not really
 have to learn too much about that.
 
 That said, it is possible to relatively quickly build selenium pieces
@@ -298,17 +302,22 @@ and deploy into you local maven repository (`~/.m2/repository`), while
 skipping Selenium's own tests.
 
 ```sh
-./go release
-cd maven
-mvn clean install
+./go maven-install
+```
+
+The maven jars should now be in your local ~/.m2/repository. You can also publish
+directly using Buck:
+
+```sh
+buck publish -r your-repo //java/client/src/org/openqa/selenium:selenium
 ```
 
 This sequence will push some seven or so jars into your local Maven
-repository with something like 'selenium-server-2.0-SNAPSHOT.jar' as
+repository with something like 'selenium-server-3.0.0.jar' as
 the name.
 
 ## Useful Resources
 
 Refer to the [Building Web
-Driver](https://github.com/SeleniumHQ/selenium/wiki/Building-WebDriver) 
+Driver](https://github.com/SeleniumHQ/selenium/wiki/Building-WebDriver)
 wiki page for the last word on building the bits and pieces of Selenium.

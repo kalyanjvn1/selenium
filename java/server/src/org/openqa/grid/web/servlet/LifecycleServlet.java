@@ -19,35 +19,24 @@
 package org.openqa.grid.web.servlet;
 
 import org.openqa.grid.common.exception.GridException;
-import org.openqa.grid.internal.Registry;
-import org.openqa.selenium.server.browserlaunchers.Sleeper;
 
 import java.io.IOException;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
  * API to manage grid lifecycle
  */
-public class LifecycleServlet extends RegistryBasedServlet {
-
-  public LifecycleServlet() {
-    super(null);
-  }
-
-  public LifecycleServlet(Registry registry) {
-    super(registry);
-  }
+public class LifecycleServlet extends HttpServlet {
 
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     process(request, response);
   }
-
-
 
   protected void process(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
@@ -56,14 +45,18 @@ public class LifecycleServlet extends RegistryBasedServlet {
     response.setStatus(200);
     String action = request.getParameter("action");
     if ("shutdown".equals(action)) {
-      Runnable initiateHubShutDown = new Runnable() {
+      Runnable initiateShutDown = new Runnable() {
         public void run() {
-          Sleeper.sleepTight(500);
+          try {
+            Thread.sleep(500);
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
           System.exit(0);
         }
       };
-      Thread isd = new Thread(initiateHubShutDown);
-      isd.setName("initiateHubShutDown");
+      Thread isd = new Thread(initiateShutDown);
+      isd.setName("initiateShutDown");
       isd.start();
     } else {
       throw new GridException("Unknown lifecycle action: " + action);

@@ -16,10 +16,6 @@
 // limitations under the License.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace OpenQA.Selenium.Interactions.Internal
 {
     /// <summary>
@@ -58,7 +54,7 @@ namespace OpenQA.Selenium.Interactions.Internal
         {
             if (this.ActionTarget != null)
             {
-                this.mouse.Click(ActionTarget.Coordinates);
+                this.mouse.Click(this.ActionTarget.Coordinates);
             }
         }
     }

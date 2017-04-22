@@ -20,10 +20,7 @@ package org.openqa.selenium.remote.internal;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
 
-import com.google.common.base.Throwables;
-
 import org.apache.http.Header;
-import org.apache.http.HeaderElement;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.NoHttpResponseException;
@@ -48,6 +45,7 @@ import java.net.BindException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 public class ApacheHttpClient implements org.openqa.selenium.remote.http.HttpClient {
 
@@ -99,9 +97,7 @@ public class ApacheHttpClient implements org.openqa.selenium.remote.http.HttpCli
 
     internalResponse.setStatus(response.getStatusLine().getStatusCode());
     for (Header header : response.getAllHeaders()) {
-      for (HeaderElement headerElement : header.getElements()) {
-        internalResponse.addHeader(header.getName(), headerElement.getValue());
-      }
+      internalResponse.addHeader(header.getName(), header.getValue());
     }
 
     HttpEntity entity = response.getEntity();
@@ -147,7 +143,7 @@ public class ApacheHttpClient implements org.openqa.selenium.remote.http.HttpCli
       try {
         Thread.sleep(2000);
       } catch (InterruptedException ie) {
-        throw Throwables.propagate(ie);
+        throw new RuntimeException(ie);
       }
     } catch (NoHttpResponseException e) {
       // If we get this, there's a chance we've used all the remote ephemeral sockets
@@ -155,7 +151,7 @@ public class ApacheHttpClient implements org.openqa.selenium.remote.http.HttpCli
       try {
         Thread.sleep(2000);
       } catch (InterruptedException ie) {
-        throw Throwables.propagate(ie);
+        throw new RuntimeException(ie);
       }
     }
     return client.execute(targetHost, httpMethod, context);
@@ -252,5 +248,10 @@ public class ApacheHttpClient implements org.openqa.selenium.remote.http.HttpCli
       }
       return defaultClientFactory;
     }
+  }
+
+  @Override
+  public void close() throws IOException {
+    client.getConnectionManager().closeIdleConnections(0, TimeUnit.SECONDS);
   }
 }

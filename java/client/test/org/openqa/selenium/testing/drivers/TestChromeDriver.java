@@ -17,8 +17,6 @@
 
 package org.openqa.selenium.testing.drivers;
 
-import com.google.common.base.Throwables;
-
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.chrome.ChromeDriverService;
@@ -30,6 +28,11 @@ import org.openqa.selenium.remote.RemoteWebDriver;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * Customized RemoteWebDriver that will communicate with a service that lives and dies with the
@@ -37,23 +40,30 @@ import java.net.URL;
  * with each instance (and that is too expensive for our purposes).
  */
 public class TestChromeDriver extends RemoteWebDriver {
+  private final static Logger LOG = Logger.getLogger(TestChromeDriver.class.getName());
+
   private static ChromeDriverService service;
 
   public TestChromeDriver() {
     super(chromeWithCustomCapabilities(null));
   }
 
-  public TestChromeDriver(Capabilities capabilities) {
+  public TestChromeDriver(Capabilities capabilities) throws IOException {
     super(getServiceUrl(), chromeWithCustomCapabilities(capabilities));
   }
 
-  private static URL getServiceUrl() {
+  private static URL getServiceUrl() throws IOException {
     if (service == null && !SauceDriver.shouldUseSauce()) {
-      service = ChromeDriverService.createDefaultService();
+      Path logFile = Files.createTempFile("chromedriver", ".log");
+      service = new ChromeDriverService.Builder()
+          .withVerbose(true)
+          .withLogFile(logFile.toFile())
+          .build();
+      LOG.info("chromedriver will log to " + logFile);
       try {
         service.start();
       } catch (IOException e) {
-        throw Throwables.propagate(e);
+        throw new RuntimeException(e);
       }
 
       // Fugly.
@@ -70,7 +80,11 @@ public class TestChromeDriver extends RemoteWebDriver {
   private static DesiredCapabilities chromeWithCustomCapabilities(
       Capabilities originalCapabilities) {
     ChromeOptions options = new ChromeOptions();
-    options.addArguments("disable-extensions");
+    options.addArguments("disable-extensions", "disable-infobars", "disable-breakpad");
+    Map<String, Object> prefs = new HashMap<>();
+    prefs.put("exit_type", "None");
+    prefs.put("exited_cleanly", true);
+    options.setExperimentalOption("prefs", prefs);
     String chromePath = System.getProperty("webdriver.chrome.binary");
     if (chromePath != null) {
       options.setBinary(new File(chromePath));

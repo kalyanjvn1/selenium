@@ -41,6 +41,7 @@ goog.require('goog.fx.anim.Animated');  // Unreferenced: interface
  * @param {number} duration Length of animation in milliseconds.
  * @param {Function=} opt_acc Acceleration function, returns 0-1 for inputs 0-1.
  * @constructor
+ * @struct
  * @implements {goog.fx.anim.Animated}
  * @implements {goog.fx.Transition}
  * @extends {goog.fx.TransitionBase}
@@ -131,8 +132,8 @@ goog.inherits(goog.fx.Animation, goog.fx.TransitionBase);
  * @param {boolean} useRightPositioningForRtl True if "right" should be used for
  *     positioning, false if "left" should be used for positioning.
  */
-goog.fx.Animation.prototype.enableRightPositioningForRtl =
-    function(useRightPositioningForRtl) {
+goog.fx.Animation.prototype.enableRightPositioningForRtl = function(
+    useRightPositioningForRtl) {
   this.useRightPositioningForRtl_ = useRightPositioningForRtl;
 };
 
@@ -376,6 +377,9 @@ goog.fx.Animation.prototype.onAnimationFrame = function(now) {
  * @param {number} now The current time.
  */
 goog.fx.Animation.prototype.cycle = function(now) {
+  goog.asserts.assertNumber(this.startTime);
+  goog.asserts.assertNumber(this.endTime);
+  goog.asserts.assertNumber(this.lastFrame);
   this.progress = (now - this.startTime) / (this.endTime - this.startTime);
 
   if (this.progress >= 1) {
@@ -395,7 +399,7 @@ goog.fx.Animation.prototype.cycle = function(now) {
     this.onFinish();
     this.onEnd();
 
-  // Animation is still under way.
+    // Animation is still under way.
   } else if (this.isPlaying()) {
     this.onAnimate();
   }
@@ -414,8 +418,8 @@ goog.fx.Animation.prototype.updateCoords_ = function(t) {
   }
   this.coords = new Array(this.startPoint.length);
   for (var i = 0; i < this.startPoint.length; i++) {
-    this.coords[i] = (this.endPoint[i] - this.startPoint[i]) * t +
-        this.startPoint[i];
+    this.coords[i] =
+        (this.endPoint[i] - this.startPoint[i]) * t + this.startPoint[i];
   }
 };
 
@@ -452,6 +456,7 @@ goog.fx.Animation.prototype.dispatchAnimationEvent = function(type) {
  * @param {string} type Event type.
  * @param {goog.fx.Animation} anim An animation object.
  * @constructor
+ * @struct
  * @extends {goog.events.Event}
  */
 goog.fx.AnimationEvent = function(type, anim) {

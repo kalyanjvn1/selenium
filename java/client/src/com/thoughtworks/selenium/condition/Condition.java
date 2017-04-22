@@ -46,6 +46,8 @@ public abstract class Condition {
   /**
    * Creates an instance of Condition with the given {@code message} and {@code args}, which are in
    * the {@link String#format(String, Object...)} modeal.
+   * @param message message
+   * @param args args
    */
   public Condition(String message, Object[] args) {
     if (null == message) {
@@ -71,16 +73,13 @@ public abstract class Condition {
         }
       }
       throw new RuntimeException("String.format(..) can't be that hard to call");
-    } else {
-      String msg = "";
-      msg = message;
-      for (int i = 0; i < args.length; i++) {
-        msg = msg + " " + args[i];
-      }
-      return msg;
-
     }
-
+    String msg = "";
+    msg = message;
+    for (int i = 0; i < args.length; i++) {
+      msg = msg + " " + args[i];
+    }
+    return msg;
   }
 
   // drop these for var-args in another year.

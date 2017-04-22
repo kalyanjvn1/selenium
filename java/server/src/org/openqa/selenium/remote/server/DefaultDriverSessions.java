@@ -46,10 +46,9 @@ public class DefaultDriverSessions implements DriverSessions {
 
   private static List<DriverProvider> defaultDriverProviders =
     new ImmutableList.Builder<DriverProvider>()
+      .add(new FirefoxDriverProvider())
       .add(new DefaultDriverProvider(DesiredCapabilities.chrome(),
                                      "org.openqa.selenium.chrome.ChromeDriver"))
-      .add(new DefaultDriverProvider(DesiredCapabilities.firefox(),
-                                     "org.openqa.selenium.firefox.FirefoxDriver"))
       .add(new DefaultDriverProvider(DesiredCapabilities.internetExplorer(),
                                      "org.openqa.selenium.ie.InternetExplorerDriver"))
       .add(new DefaultDriverProvider(DesiredCapabilities.edge(),
@@ -101,10 +100,17 @@ public class DefaultDriverSessions implements DriverSessions {
     Capabilities caps = provider.getProvidedCapabilities();
     if (!platformMatches(current, caps)) {
       LOG.info(String.format(
-                 "Driver provider %s registration is skipped:%n"
-                 + "registration capabilities %s does not match the current platform %s",
-                 provider, caps, current));
+        "Driver provider %s registration is skipped:%n" +
+        " registration capabilities %s does not match the current platform %s",
+        provider, caps, current));
       return;
+    }
+
+    if (!provider.canCreateDriverInstances()) {
+      LOG.info(String.format(
+        "Driver provider %s registration is skipped:%n" +
+        "Unable to create new instances on this machine.",
+        provider));
     }
 
     factory.registerDriverProvider(provider);

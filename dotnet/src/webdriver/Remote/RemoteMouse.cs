@@ -18,7 +18,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
 using OpenQA.Selenium.Interactions.Internal;
 
 namespace OpenQA.Selenium.Remote
@@ -39,7 +38,6 @@ namespace OpenQA.Selenium.Remote
             this.driver = driver;
         }
 
-        #region IMouse Members
         /// <summary>
         /// Clicks at a set of coordinates using the primary mouse button.
         /// </summary>
@@ -131,7 +129,6 @@ namespace OpenQA.Selenium.Remote
             parameters.Add("button", 2);
             this.driver.InternalExecute(DriverCommand.MouseClick, parameters);
         }
-        #endregion
 
         private void MoveIfNeeded(ICoordinates where)
         {

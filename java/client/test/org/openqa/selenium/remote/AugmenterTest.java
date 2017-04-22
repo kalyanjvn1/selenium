@@ -17,15 +17,14 @@
 
 package org.openqa.selenium.remote;
 
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.openqa.selenium.remote.DriverCommand.FIND_ELEMENT;
-
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.sameInstance;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
@@ -96,7 +95,7 @@ public class AugmenterTest extends BaseAugmenterTest {
             try {
               return method.invoke(driver, args);
             } catch (IllegalAccessException e) {
-              throw Throwables.propagate(e);
+              throw new RuntimeException(e);
             } catch (InvocationTargetException e) {
               throw Throwables.propagate(e.getTargetException());
             }

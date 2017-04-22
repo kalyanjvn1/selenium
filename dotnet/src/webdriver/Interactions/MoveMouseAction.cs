@@ -17,8 +17,6 @@
 // </copyright>
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 using OpenQA.Selenium.Interactions.Internal;
 
 namespace OpenQA.Selenium.Interactions
@@ -42,7 +40,6 @@ namespace OpenQA.Selenium.Interactions
             }
         }
 
-        #region IAction Members
         /// <summary>
         /// Performs this action.
         /// </summary>
@@ -50,7 +47,5 @@ namespace OpenQA.Selenium.Interactions
         {
             this.Mouse.MouseMove(this.ActionLocation);
         }
-
-        #endregion
     }
 }

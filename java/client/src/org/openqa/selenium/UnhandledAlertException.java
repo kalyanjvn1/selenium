@@ -17,6 +17,10 @@
 
 package org.openqa.selenium;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 public class UnhandledAlertException extends WebDriverException {
 
   private final String alertText;
@@ -31,9 +35,17 @@ public class UnhandledAlertException extends WebDriverException {
   }
 
   /**
-   * Returns the text of the unhandled alert.
+   * @return the text of the unhandled alert.
    */
   public String getAlertText() {
     return alertText;
+  }
+
+  // Used for serialising. Some of the drivers return the alert text like this.
+  @Beta
+  public Map<String, String> getAlert() {
+    HashMap<String, String> toReturn = new HashMap<>();
+    toReturn.put("text", getAlertText());
+    return Collections.unmodifiableMap(toReturn);
   }
 }

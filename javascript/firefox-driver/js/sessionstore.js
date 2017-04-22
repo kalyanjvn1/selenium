@@ -158,8 +158,7 @@ wdSessionStoreService.READ_ONLY_CAPABILITIES_ = {
 
 /**
  * Read-write capabilities for FirefoxDriver corresponding to (boolean)
- * profile preferences. NB! the native events capability is not mapped to a
- * Firefox preferences.
+ * profile preferences.
  * @type {!Object.<string, string>}
  * @const
  */
@@ -167,10 +166,11 @@ wdSessionStoreService.CAPABILITY_PREFERENCE_MAPPING = {
   'webStorageEnabled': 'dom.storage.enabled',
   'applicationCacheEnabled': 'browser.cache.offline.enable',
   'databaseEnabled': 'dom.indexedDB.enabled',
+  'elementScrollBehavior' : 'webdriver.elementScrollBehavior',
+  'overlappingCheckDisabled' : 'webdriver.overlappingCheckDisabled',
   'locationContextEnabled': 'geo.enabled',
   'browserConnectionEnabled': 'dom.network.enabled',
   'acceptSslCerts': 'webdriver_accept_untrusted_certs',
-  'nativeEvents' : 'webdriver_enable_native_events',
   'pageLoadingStrategy' : 'webdriver.load.strategy',
   'pageLoadStrategy' : 'webdriver.load.strategy'
 };
@@ -228,14 +228,8 @@ wdSessionStoreService.prototype.configureCapabilities_ = function(capabilities,
       } else {
         prefStore.setCharPref(pref, value);
       }
-      if (key == 'nativeEvents') {
-        driver.enableNativeEvents = value;
-      }
     }
   });
-  if (driver.enableNativeEvents) {
-    prefStore.setCharPref('layout.css.devPixelsPerPx', '1.0');
-  }
 };
 
 
@@ -261,11 +255,20 @@ wdSessionStoreService.prototype.getSession = function(sessionId) {
     var session = this.sessions_[sessionId].wrappedJSObject;  // XPConnect
     return this.sessions_[sessionId];
   }
-  var sessions = [];
-  for (var session in this.sessions_) {
-    sessions.push(session);
-  }
   throw Components.results.NS_ERROR_NOT_AVAILABLE;
+};
+
+
+/**
+ * Retrieve all the current active session IDs.
+ * @returns {!Array.<string>}
+ */
+wdSessionStoreService.prototype.getSessions = function() {
+  var sessions = [];
+  for (var sessionId in this.sessions_) {
+    sessions.push(sessionId);
+  }
+  return sessions;
 };
 
 

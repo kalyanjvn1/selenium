@@ -17,13 +17,8 @@
 // </copyright>
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Reflection;
-using System.Reflection.Emit;
-using OpenQA.Selenium.Interactions.Internal;
-using OpenQA.Selenium.Internal;
 
 namespace OpenQA.Selenium.Support.PageObjects
 {
@@ -33,7 +28,8 @@ namespace OpenQA.Selenium.Support.PageObjects
     public sealed class PageFactory
     {
         /// <summary>
-        /// Prevents a default instance of the PageFactory class from being created.
+        /// Initializes a new instance of the <see cref="PageFactory"/> class.
+        /// Private constructor prevents a default instance from being created.
         /// </summary>
         private PageFactory()
         {
@@ -60,37 +56,6 @@ namespace OpenQA.Selenium.Support.PageObjects
         public static T InitElements<T>(IWebDriver driver)
         {
             return InitElements<T>(new DefaultElementLocator(driver));
-        }
-
-        /// <summary>
-        /// Initializes the elements in the Page Object with the given type.
-        /// </summary>
-        /// <typeparam name="T">The <see cref="Type"/> of the Page Object class.</typeparam>
-        /// <param name="driver">The <see cref="IWebDriver"/> instance used to populate the page.</param>
-        /// <param name="locatorFactory">The <see cref="IElementLocatorFactory"/> implementation that
-        /// determines how elements are located.</param>
-        /// <returns>An instance of the Page Object class with the elements initialized.</returns>
-        /// <remarks>
-        /// The class used in the <typeparamref name="T"/> argument must have a public constructor
-        /// that takes a single argument of type <see cref="IWebDriver"/>. This helps to enforce
-        /// best practices of the Page Object pattern, and encapsulates the driver into the Page
-        /// Object so that it can have no external WebDriver dependencies.
-        /// </remarks>
-        /// <exception cref="ArgumentException">
-        /// thrown if no constructor to the class can be found with a single IWebDriver argument
-        /// <para>-or-</para>
-        /// if a field or property decorated with the <see cref="FindsByAttribute"/> is not of type
-        /// <see cref="IWebElement"/> or IList{IWebElement}.
-        /// </exception>
-        [Obsolete("Users should use classes that implement IElementLocator instead of IElementLocatorFactory. This overload will be removed in a future release.")]
-        public static T InitElements<T>(IWebDriver driver, IElementLocatorFactory locatorFactory)
-        {
-            if (locatorFactory == null)
-            {
-                throw new ArgumentNullException("locatorFactory", "locatorFactory cannot be null");
-            }
-
-            return InitElements<T>(locatorFactory.CreateLocator(driver));
         }
 
         /// <summary>
@@ -143,28 +108,6 @@ namespace OpenQA.Selenium.Support.PageObjects
         /// </summary>
         /// <param name="driver">The driver used to find elements on the page.</param>
         /// <param name="page">The Page Object to be populated with elements.</param>
-        /// <param name="locatorFactory">The <see cref="IElementLocatorFactory"/> implementation that
-        /// determines how elements are located.</param>
-        /// <exception cref="ArgumentException">
-        /// thrown if a field or property decorated with the <see cref="FindsByAttribute"/> is not of type
-        /// <see cref="IWebElement"/> or IList{IWebElement}.
-        /// </exception>
-        [Obsolete("Users should use classes that implement IElementLocator instead of IElementLocatorFactory. This overload will be removed in a future release.")]
-        public static void InitElements(ISearchContext driver, object page, IElementLocatorFactory locatorFactory)
-        {
-            if (locatorFactory == null)
-            {
-                throw new ArgumentNullException("locatorFactory", "locatorFactory cannot be null");
-            }
-
-            InitElements(page, locatorFactory.CreateLocator(driver));
-        }
-
-        /// <summary>
-        /// Initializes the elements in the Page Object.
-        /// </summary>
-        /// <param name="driver">The driver used to find elements on the page.</param>
-        /// <param name="page">The Page Object to be populated with elements.</param>
         /// <exception cref="ArgumentException">
         /// thrown if a field or property decorated with the <see cref="FindsByAttribute"/> is not of type
         /// <see cref="IWebElement"/> or IList{IWebElement}.
@@ -204,7 +147,7 @@ namespace OpenQA.Selenium.Support.PageObjects
         {
             InitElements(page, locator, new DefaultPageObjectMemberDecorator());
         }
-        
+
         /// <summary>
         /// Initializes the elements in the Page Object.
         /// </summary>

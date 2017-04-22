@@ -17,13 +17,14 @@
 
 package org.openqa.selenium.remote;
 
+import static org.openqa.selenium.remote.CapabilityType.ACCEPT_INSECURE_CERTS;
 import static org.openqa.selenium.remote.CapabilityType.BROWSER_NAME;
 import static org.openqa.selenium.remote.CapabilityType.LOGGING_PREFS;
 import static org.openqa.selenium.remote.CapabilityType.PLATFORM;
 import static org.openqa.selenium.remote.CapabilityType.SUPPORTS_JAVASCRIPT;
+import static org.openqa.selenium.remote.CapabilityType.UNEXPECTED_ALERT_BEHAVIOUR;
+import static org.openqa.selenium.remote.CapabilityType.UNHANDLED_PROMPT_BEHAVIOUR;
 import static org.openqa.selenium.remote.CapabilityType.VERSION;
-
-import com.google.common.collect.Maps;
 
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.Platform;
@@ -52,6 +53,9 @@ public class DesiredCapabilities implements Serializable, Capabilities {
 
   public DesiredCapabilities(Map<String, ?> rawMap) {
     capabilities.putAll(rawMap);
+    if (rawMap.containsKey(UNEXPECTED_ALERT_BEHAVIOUR)) {
+      capabilities.put(UNHANDLED_PROMPT_BEHAVIOUR, rawMap.get(UNEXPECTED_ALERT_BEHAVIOUR));
+    }
 
     if (rawMap.containsKey(LOGGING_PREFS) && rawMap.get(LOGGING_PREFS) instanceof Map) {
       LoggingPreferences prefs = new LoggingPreferences();
@@ -87,43 +91,25 @@ public class DesiredCapabilities implements Serializable, Capabilities {
     }
   }
 
-  public String getBrowserName() {
-    Object browserName = capabilities.get(BROWSER_NAME);
-    return browserName == null ? "" : browserName.toString();
-  }
-
   public void setBrowserName(String browserName) {
     setCapability(BROWSER_NAME, browserName);
-  }
-
-  public String getVersion() {
-    Object version = capabilities.get(VERSION);
-    return version == null ? "" : version.toString();
   }
 
   public void setVersion(String version) {
     setCapability(VERSION, version);
   }
 
-  public Platform getPlatform() {
-    if (capabilities.containsKey(PLATFORM)) {
-      Object raw = capabilities.get(PLATFORM);
-      if (raw instanceof String) {
-        return Platform.valueOf((String) raw);
-      } else if (raw instanceof Platform) {
-        return (Platform) raw;
-      }
-    }
-    return null;
-  }
-
   public void setPlatform(Platform platform) {
     setCapability(PLATFORM, platform);
   }
 
-  public boolean isJavascriptEnabled() {
-    if (capabilities.containsKey(SUPPORTS_JAVASCRIPT)) {
-      Object raw = capabilities.get(SUPPORTS_JAVASCRIPT);
+  public void setJavascriptEnabled(boolean javascriptEnabled) {
+    setCapability(SUPPORTS_JAVASCRIPT, javascriptEnabled);
+  }
+
+  public boolean acceptInsecureCerts() {
+    if (capabilities.containsKey(ACCEPT_INSECURE_CERTS)) {
+      Object raw = capabilities.get(ACCEPT_INSECURE_CERTS);
       if (raw instanceof String) {
         return Boolean.parseBoolean((String) raw);
       } else if (raw instanceof Boolean) {
@@ -133,20 +119,12 @@ public class DesiredCapabilities implements Serializable, Capabilities {
     return true;
   }
 
-  public void setJavascriptEnabled(boolean javascriptEnabled) {
-    setCapability(SUPPORTS_JAVASCRIPT, javascriptEnabled);
+  public void setAcceptInsecureCerts(boolean acceptInsecureCerts) {
+    setCapability(ACCEPT_INSECURE_CERTS, acceptInsecureCerts);
   }
 
   public Object getCapability(String capabilityName) {
     return capabilities.get(capabilityName);
-  }
-
-  public boolean is(String capabilityName) {
-    Object cap = getCapability(capabilityName);
-    if (cap == null) {
-      return false;
-    }
-    return cap instanceof Boolean ? (Boolean) cap : Boolean.parseBoolean(String.valueOf(cap));
   }
 
   /**
@@ -155,12 +133,15 @@ public class DesiredCapabilities implements Serializable, Capabilities {
    * extraCapabilities object.
    *
    * @param extraCapabilities Additional capabilities to be added.
+   * @return DesiredCapabilities after the merge
    */
-
-  public DesiredCapabilities merge(
-      org.openqa.selenium.Capabilities extraCapabilities) {
+  @Override
+  public DesiredCapabilities merge(Capabilities extraCapabilities) {
     if (extraCapabilities != null) {
       capabilities.putAll(extraCapabilities.asMap());
+      if (extraCapabilities.getCapability(UNEXPECTED_ALERT_BEHAVIOUR) != null) {
+        capabilities.put(UNHANDLED_PROMPT_BEHAVIOUR, extraCapabilities.getCapability(UNEXPECTED_ALERT_BEHAVIOUR));
+      }
     }
     return this;
   }
@@ -177,6 +158,9 @@ public class DesiredCapabilities implements Serializable, Capabilities {
         capabilities.put(capabilityName, value);
       }
     } else {
+      if (UNEXPECTED_ALERT_BEHAVIOUR.equals(capabilityName)) {
+        capabilities.put(UNHANDLED_PROMPT_BEHAVIOUR, value);
+      }
       capabilities.put(capabilityName, value);
     }
   }
@@ -206,18 +190,17 @@ public class DesiredCapabilities implements Serializable, Capabilities {
   }
 
   public static DesiredCapabilities firefox() {
-    return new DesiredCapabilities(BrowserType.FIREFOX, "", Platform.ANY);
+    DesiredCapabilities capabilities = new DesiredCapabilities(
+        BrowserType.FIREFOX,
+        "",
+        Platform.ANY);
+    capabilities.setCapability("acceptInsecureCerts", true);
+
+    return capabilities;
   }
 
   public static DesiredCapabilities htmlUnit() {
     return new DesiredCapabilities(BrowserType.HTMLUNIT, "", Platform.ANY);
-  }
-
-  public static DesiredCapabilities htmlUnitWithJs() {
-    DesiredCapabilities capabilities = new DesiredCapabilities(BrowserType.HTMLUNIT,
-                                                               "", Platform.ANY);
-    capabilities.setJavascriptEnabled(true);
-    return capabilities;
   }
 
   public static DesiredCapabilities edge() {
@@ -239,6 +222,7 @@ public class DesiredCapabilities implements Serializable, Capabilities {
   }
 
   /**
+   * @return DesiredCapabilities for opera
    * @deprecated Use #operaBlink
    */
   @Deprecated
@@ -251,7 +235,7 @@ public class DesiredCapabilities implements Serializable, Capabilities {
   }
 
   public static DesiredCapabilities safari() {
-    return new DesiredCapabilities(BrowserType.SAFARI, "", Platform.ANY);
+    return new DesiredCapabilities(BrowserType.SAFARI, "", Platform.MAC);
   }
 
   public static DesiredCapabilities phantomjs() {
@@ -260,19 +244,26 @@ public class DesiredCapabilities implements Serializable, Capabilities {
 
   @Override
   public String toString() {
-    Map<String, String> map = Maps.newHashMap();
+    return String.format("Capabilities [%s]", shortenMapValues(capabilities));
+  }
 
-    for (Map.Entry<String, ?> entry : capabilities.entrySet()) {
-      String value = String.valueOf(entry.getValue());
-      if ("firefox_profile".equals(entry.getKey())) {
-        if (value.length() > 32) {
+  private Map<String, Object> shortenMapValues(Map<String, Object> map) {
+    Map<String, Object> newMap = new HashMap<>();
+
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      if (entry.getValue() instanceof Map) {
+        newMap.put(entry.getKey(),
+                   shortenMapValues((Map<String, Object>) entry.getValue()));
+      } else {
+        String value = String.valueOf(entry.getValue());
+        if (value.length() > 1024) {
           value = value.substring(0, 29) + "...";
         }
+        newMap.put(entry.getKey(), value);
       }
-      map.put(entry.getKey(), value);
     }
 
-    return String.format("Capabilities [%s]", map);
+    return newMap;
   }
 
   @Override

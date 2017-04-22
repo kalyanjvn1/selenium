@@ -54,6 +54,7 @@ public class PageFactory {
    *
    * @param driver           The driver that will be used to look up the elements
    * @param pageClassToProxy A class which will be initialised.
+   * @param <T>              Class of the PageObject
    * @return An instantiated instance of the class with WebElement and List&lt;WebElement&gt;
    * fields proxied
    * @see FindBy
@@ -80,7 +81,7 @@ public class PageFactory {
 
   /**
    * Similar to the other "initElements" methods, but takes an {@link ElementLocatorFactory} which
-   * is used for providing the mechanism for fniding elements. If the ElementLocatorFactory returns
+   * is used for providing the mechanism for finding elements. If the ElementLocatorFactory returns
    * null then the field won't be decorated.
    *
    * @param factory The factory to use

@@ -15,13 +15,17 @@
 // limitations under the License.
 
 #include "DocumentHost.h"
+
+#include "errorcodes.h"
+#include "logging.h"
+
 #include "BrowserCookie.h"
 #include "BrowserFactory.h"
 #include "CookieManager.h"
-#include "logging.h"
 #include "messages.h"
 #include "RegistryUtilities.h"
 #include "Script.h"
+#include "StringUtilities.h"
 
 namespace webdriver {
 
@@ -83,7 +87,7 @@ std::string DocumentHost::GetCurrentUrl() {
     return "";
   }
 
-  std::wstring converted_url = url;
+  std::wstring converted_url(url, ::SysStringLen(url));
   std::string current_url = StringUtilities::ToString(converted_url);
   return current_url;
 }

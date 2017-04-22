@@ -17,15 +17,15 @@
 
 package org.openqa.selenium.support.pagefactory;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.openqa.selenium.By;
 import org.openqa.selenium.support.ByIdOrName;
 import org.openqa.selenium.support.FindAll;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.FindBys;
 import org.openqa.selenium.support.How;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Abstract class to work with fields in Page Objects.
@@ -38,12 +38,16 @@ public abstract class AbstractAnnotations {
   /**
    * Defines how to transform given object (field, class, etc)
    * into {@link org.openqa.selenium.By} class used by webdriver to locate elements.
+   *
+   * @return By object
    */
   public abstract By buildBy();
 
   /**
    * Defines whether or not given element
    * should be returned from cache on further calls.
+   *
+   * @return boolean if lookup cached
    */
   public abstract boolean isLookupCached();
 

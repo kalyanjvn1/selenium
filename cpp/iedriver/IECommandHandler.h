@@ -18,13 +18,13 @@
 #define WEBDRIVER_IE_COMMANDHANDLER_H_
 
 #include <map>
-#include <memory>
 #include <string>
+
 #include "command_handler.h"
 #include "command.h"
-#include "Element.h"
 #include "response.h"
-#include "Script.h"
+
+#include "CustomTypes.h"
 
 #define BROWSER_NAME_CAPABILITY "browserName"
 #define BROWSER_VERSION_CAPABILITY "version"
@@ -50,9 +50,10 @@
 #define USE_PER_PROCESS_PROXY_CAPABILITY "ie.usePerProcessProxy"
 #define ENSURE_CLEAN_SESSION_CAPABILITY "ie.ensureCleanSession"
 #define FORCE_SHELL_WINDOWS_API_CAPABILITY "ie.forceShellWindowsApi"
-#define VALIDATE_COOKIE_DOCUMENT_TYPE_CAPABILITY "ie.validateCookieDocumentType"
-
-using namespace std;
+#define FILE_UPLOAD_DIALOG_TIMEOUT_CAPABILITY "ie.fileUploadDialogTimeout"
+#define USE_LEGACY_FILE_UPLOAD_DIALOG_HANDLING_CAPABILITY "ie.useLegacyFileUploadDialogHandling"
+#define ENABLE_FULL_PAGE_SCREENSHOT_CAPABILITY "ie.enableFullPageScreenshot"
+#define IE_DRIVER_EXTENSIONS_CAPABILITY "se:ieOptions"
 
 namespace webdriver {
 
@@ -74,8 +75,6 @@ class IECommandHandler : public CommandHandler<IECommandExecutor> {
                  ElementHandle* element_wrapper);
   Json::Value RecreateJsonParameterObject(const ParametersMap& command_parameters);
 };
-
-typedef std::tr1::shared_ptr<IECommandHandler> CommandHandlerHandle;
 
 } // namespace webdriver
 

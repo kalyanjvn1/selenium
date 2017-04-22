@@ -18,16 +18,27 @@
 #define WEBDRIVER_IE_INPUTMANAGER_H_
 
 #include <vector>
-#include "DocumentHost.h"
 
-#define USER_INTERACTION_MUTEX_NAME L"WebDriverUserInteractionMutex"
-#define WAIT_TIME_IN_MILLISECONDS_PER_INPUT_EVENT 100
+#include "CustomTypes.h"
+#include "ElementScrollBehavior.h"
+
+namespace Json {
+  class Value;
+}
 
 namespace webdriver {
+
+struct KeyInfo {
+  WORD key_code;
+  UINT scan_code;
+  bool is_extended_key;
+  bool is_webdriver_key;
+};
 
 // Forward declaration of classes to avoid
 // circular include files.
 class ElementRepository;
+class InteractionsManager;
 
 class InputManager {
  public:
@@ -52,6 +63,9 @@ class InputManager {
                      bool auto_release_modifier_keys);
   bool SetFocusToBrowser(BrowserHandle browser_wrapper);
 
+  void SetPersistentEvents(bool is_firing);
+  void StopPersistentEvents(void);
+
   bool enable_native_events(void) const { return this->use_native_events_; }
   void set_enable_native_events(const bool enable_native_events) { 
     this->use_native_events_ = enable_native_events;
@@ -62,10 +76,10 @@ class InputManager {
     this->require_window_focus_ = require_window_focus;
   }
 
-  ELEMENT_SCROLL_BEHAVIOR scroll_behavior(void) const {
+  ElementScrollBehavior scroll_behavior(void) const {
     return this->scroll_behavior_; 
   }
-  void set_scroll_behavior(const ELEMENT_SCROLL_BEHAVIOR scroll_behavior) {
+  void set_scroll_behavior(const ElementScrollBehavior scroll_behavior) {
     this->scroll_behavior_ = scroll_behavior;
   }
 
@@ -93,6 +107,12 @@ class InputManager {
                                 int* normalized_y);
   void AddMouseInput(HWND window_handle, long flag, int x, int y);
   void AddKeyboardInput(HWND window_handle, wchar_t character);
+
+  void CreateKeyboardInputItem(KeyInfo key_info, DWORD initial_flags, bool is_generating_keyup);
+
+  bool IsModifierKey(wchar_t character);
+
+  KeyInfo GetKeyInfo(HWND windows_handle, wchar_t character);
   
   bool WaitForInputEventProcessing(int input_count);
 
@@ -105,16 +125,15 @@ class InputManager {
   bool is_control_pressed_;
   bool is_alt_pressed_;
 
-  ELEMENT_SCROLL_BEHAVIOR scroll_behavior_;
+  ElementScrollBehavior scroll_behavior_;
 
   CComVariant keyboard_state_;
   CComVariant mouse_state_;
 
   ElementRepository* element_map_;
+  InteractionsManager* interactions_manager_;
 
   std::vector<INPUT> inputs_;
-  HHOOK keyboard_hook_handle_;
-  HHOOK mouse_hook_handle_;
 };
 
 } // namespace webdriver

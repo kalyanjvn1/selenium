@@ -30,7 +30,6 @@ import org.openqa.grid.internal.listeners.SelfHealingProxy;
 import org.openqa.grid.internal.listeners.TestSessionListener;
 import org.openqa.grid.internal.listeners.TimeoutListener;
 import org.openqa.grid.internal.utils.HtmlRenderer;
-import org.openqa.grid.selenium.utils.WebProxyHtmlRenderer;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.remote.BrowserType;
@@ -68,12 +67,9 @@ public class DefaultRemoteProxy extends BaseRemoteProxy
   public DefaultRemoteProxy(RegistrationRequest request, Registry registry) {
     super(request, registry);
 
-    pollingInterval = request.getConfigAsInt(RegistrationRequest.NODE_POLLING,
-                                             DEFAULT_POLLING_INTERVAL);
-    unregisterDelay = request.getConfigAsInt(RegistrationRequest.UNREGISTER_IF_STILL_DOWN_AFTER,
-                                             DEFAULT_UNREGISTER_DELAY);
-    downPollingLimit = request.getConfigAsInt(RegistrationRequest.DOWN_POLLING_LIMIT,
-                                                DEFAULT_DOWN_POLLING_LIMIT);
+    pollingInterval = config.nodePolling != null ? config.nodePolling : DEFAULT_POLLING_INTERVAL;
+    unregisterDelay = config.unregisterIfStillDownAfter != null ? config.unregisterIfStillDownAfter : DEFAULT_UNREGISTER_DELAY;
+    downPollingLimit = config.downPollingLimit != null ? config.downPollingLimit : DEFAULT_DOWN_POLLING_LIMIT;
   }
 
   public void beforeRelease(TestSession session) {
@@ -89,12 +85,12 @@ public class DefaultRemoteProxy extends BaseRemoteProxy
 
 
   public void afterCommand(TestSession session, HttpServletRequest request, HttpServletResponse response) {
-    session.put("lastCommand", request.getMethod() + " - " + request.getPathInfo() + " executing ...");
+    session.put("lastCommand", request.getMethod() + " - " + request.getPathInfo() + " executed.");
   }
 
 
   public void beforeCommand(TestSession session, HttpServletRequest request, HttpServletResponse response) {
-    session.put("lastCommand", request.getMethod() + " - " + request.getPathInfo() + " executed.");
+    session.put("lastCommand", request.getMethod() + " - " + request.getPathInfo() + " executing ...");
   }
 
   private final HtmlRenderer renderer = new WebProxyHtmlRenderer(this);
@@ -111,7 +107,7 @@ public class DefaultRemoteProxy extends BaseRemoteProxy
   private volatile boolean poll = true;
 
   // TODO freynaud
-  private List<RemoteException> errors = new CopyOnWriteArrayList<RemoteException>();
+  private List<RemoteException> errors = new CopyOnWriteArrayList<>();
   private Thread pollingThread = null;
 
   public boolean isAlive() {
@@ -250,8 +246,7 @@ public class DefaultRemoteProxy extends BaseRemoteProxy
   }
 
   public void afterSession(TestSession session) {
-    // TODO Auto-generated method stub
-
+    // nothing to do here in this default implementation
   }
 
   @Override

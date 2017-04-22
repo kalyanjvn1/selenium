@@ -20,9 +20,10 @@ package org.openqa.grid.internal;
 import com.google.gson.JsonObject;
 
 import org.openqa.grid.common.RegistrationRequest;
-import org.openqa.grid.common.exception.GridException;
+import org.openqa.grid.common.SeleniumProtocol;
 import org.openqa.grid.internal.utils.CapabilityMatcher;
 import org.openqa.grid.internal.utils.HtmlRenderer;
+import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 import org.openqa.selenium.remote.internal.HttpClientFactory;
 
 import java.net.URL;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Proxy to a remote server executing the tests. <p/> The proxy keeps a state of what is happening
+ * Proxy to a remote server executing the tests. <p> The proxy keeps a state of what is happening
  * on the remote server and knows if a new test can be run on the remote server. There are several
  * reasons why a test could not be run on the specified remote server, for instance: if the
  * RemoteProxy decides the remote server has reached the maximum number of concurrent sessions, or
@@ -38,6 +39,18 @@ import java.util.Map;
  * only support Firefox.
  */
 public interface RemoteProxy extends Comparable<RemoteProxy> {
+
+  /**
+   * Create a new TestSlot.
+   *
+   * @param protocol a {@link SeleniumProtocol} object that identifies the request flavor.
+   * @param capabilities the type of test the client is interested in performing.
+   * @return the entity on a proxy that can host a test session.
+   */
+  default TestSlot createTestSlot(SeleniumProtocol protocol, Map<String, Object> capabilities) {
+    return new TestSlot(this, protocol, capabilities);
+  }
+
   /**
    * Each test running on the node will occupy a test slot.  A test slot can either be in use (have a session) or be
    * available for scheduling (no associated session).  This method allows retrieving the total state of the node,
@@ -86,7 +99,7 @@ public interface RemoteProxy extends Comparable<RemoteProxy> {
    *
    * @return the node configuration.
    */
-  Map<String, Object> getConfig();
+  GridNodeConfiguration getConfig();
 
   /**
    * Returns the request sent from the node to the hub to register the proxy.
@@ -98,7 +111,7 @@ public interface RemoteProxy extends Comparable<RemoteProxy> {
   /**
    * Returns the maximum number of concurrent tests that can run on this node.  NB: this number can be less than
    * the number of test slots because a test slot only indicates what type of test session can be run on the remote.
-   * I.e., a node may allow N different <em>types</em> of tests, but only allow M tests to run at once, for M <= N.
+   * I.e., a node may allow N different <em>types</em> of tests, but only allow M tests to run at once, for M &lt;= N.
    *
    * @return Maximum number of concurrent tests that can run on this node.
    */
@@ -157,15 +170,14 @@ public interface RemoteProxy extends Comparable<RemoteProxy> {
    *
    * @return the node status.
    *
-   * @throws GridException if the node is down.
    */
-  JsonObject getStatus() throws GridException;
+  JsonObject getStatus() ;
 
   /**
    * Checks if the node has the capability requested.
-   * <br /><br />
+   * <br>
    * The definition of "has" is defined by {@link CapabilityMatcher#matches(Map, Map)}
-   * <br /><br />
+   * <br>
    * <code>hasCapability = true</code> doesn't mean the test cast start just now, only that the proxy will be
    * able to run a test requiring that capability at some point.
    *
@@ -191,4 +203,9 @@ public interface RemoteProxy extends Comparable<RemoteProxy> {
    * @return the percentage of the available resource used. Can be greater than 100 if the grid is under heavy load.
    */
   float getResourceUsageInPercent();
+
+  /**
+   * @return the time the latest session was started on a TestSlot, -1 if no sessions were started.
+   */
+  long getLastSessionStart();
 }

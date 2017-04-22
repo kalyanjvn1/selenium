@@ -459,7 +459,7 @@ bot.Keyboard.prototype.pressKey = function(key) {
 bot.Keyboard.prototype.requiresKeyPress_ = function(key) {
   if (key.character || key == bot.Keyboard.Keys.ENTER) {
     return true;
-  } else if (goog.userAgent.WEBKIT) {
+  } else if (goog.userAgent.WEBKIT || goog.userAgent.EDGE) {
     return false;
   } else if (goog.userAgent.IE) {
     return key == bot.Keyboard.Keys.ESC;
@@ -812,7 +812,9 @@ bot.Keyboard.prototype.updateOnHomeOrEnd_ = function(key) {
  */
 bot.Keyboard.checkCanUpdateSelection_ = function(element) {
   try {
-    element.selectionStart;
+    if (typeof element.selectionStart == 'number') {
+      return;
+    }
   } catch (ex) {
     // The native error message is actually pretty informative, just add a
     // reference to the relevant Chrome bug to provide more context.
@@ -823,6 +825,7 @@ bot.Keyboard.checkCanUpdateSelection_ = function(element) {
     }
     throw ex;
   }
+  throw Error('Element does not support selection');
 };
 
 

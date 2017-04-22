@@ -17,220 +17,245 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require File.expand_path("../spec_helper", __FILE__)
+require_relative 'spec_helper'
 
-describe "Element" do
+module Selenium
+  module WebDriver
+    describe Element do
+      it 'should click' do
+        driver.navigate.to url_for('formPage.html')
+        driver.find_element(id: 'imageButton').click
+      end
 
-  it "should click" do
-    driver.navigate.to url_for("formPage.html")
-    driver.find_element(:id, "imageButton").click
-  end
+      compliant_on browser: [:chrome, :ff_esr] do
+        not_compliant_on driver: :remote, platform: :macosx do
+          it 'should raise if different element receives click' do
+            driver.navigate.to url_for('click_tests/overlapping_elements.html')
+            element_error = 'Other element would receive the click: <div id="over"><\/div>'
+            error = /is not clickable at point \(\d+, \d+\)\. #{element_error}/
+            expect { driver.find_element(id: 'contents').click }
+              .to raise_error(Selenium::WebDriver::Error::UnknownError, error)
+          end
+        end
+      end
 
-  # Edge does not yet support /session/:sessionId/element/:id/submit
-  #   http://dev.modern.ie/platform/status/webdriver/details/
-  not_compliant_on :browser => :edge do
-    it "should submit" do
-      driver.navigate.to url_for("formPage.html")
-      driver.find_element(:id, "submitButton").submit
+      compliant_on browser: [:firefox, :ff_esr, :ff_nightly] do
+        it 'should not raise if element is only partially covered' do
+          driver.navigate.to url_for('click_tests/overlapping_elements.html')
+          expect { driver.find_element(id: 'other_contents').click }.not_to raise_error
+        end
+      end
+
+      it 'should submit' do
+        driver.navigate.to url_for('formPage.html')
+        wait_for_element(id: 'submitButton')
+        driver.find_element(id: 'submitButton').submit
+      end
+
+      it 'should send string keys' do
+        driver.navigate.to url_for('formPage.html')
+        wait_for_element(id: 'working')
+        driver.find_element(id: 'working').send_keys('foo', 'bar')
+      end
+
+      not_compliant_on browser: :safari do
+        it 'should send key presses' do
+          driver.navigate.to url_for('javascriptPage.html')
+          key_reporter = driver.find_element(id: 'keyReporter')
+
+          key_reporter.send_keys('Tet', :arrow_left, 's')
+          expect(key_reporter.attribute('value')).to eq('Test')
+        end
+      end
+
+      # PhantomJS on windows issue: https://github.com/ariya/phantomjs/issues/10993
+      # https://github.com/mozilla/geckodriver/issues/644
+      not_compliant_on browser: [:safari, :edge, :phantomjs, :ff_nightly] do
+        it 'should handle file uploads' do
+          driver.navigate.to url_for('formPage.html')
+
+          element = driver.find_element(id: 'upload')
+          expect(element.attribute('value')).to be_empty
+
+          file = Tempfile.new('file-upload')
+          path = file.path
+          path.tr!('/', '\\') if WebDriver::Platform.windows?
+
+          element.send_keys path
+
+          expect(element.attribute('value')).to include(File.basename(path))
+        end
+      end
+
+      it 'should get attribute value' do
+        driver.navigate.to url_for('formPage.html')
+        expect(driver.find_element(id: 'withText').attribute('rows')).to eq('5')
+      end
+
+      it 'should return nil for non-existent attributes' do
+        driver.navigate.to url_for('formPage.html')
+        expect(driver.find_element(id: 'withText').attribute('nonexistent')).to be_nil
+      end
+
+      not_compliant_on browser: :edge do
+        it 'should get property value' do
+          driver.navigate.to url_for('formPage.html')
+          expect(driver.find_element(id: 'withText').property('nodeName')).to eq('TEXTAREA')
+        end
+      end
+
+      it 'should clear' do
+        driver.navigate.to url_for('formPage.html')
+        driver.find_element(id: 'withText').clear
+      end
+
+      it 'should get and set selected' do
+        driver.navigate.to url_for('formPage.html')
+
+        cheese = driver.find_element(id: 'cheese')
+        peas = driver.find_element(id: 'peas')
+
+        cheese.click
+
+        expect(cheese).to be_selected
+        expect(peas).not_to be_selected
+
+        peas.click
+
+        expect(peas).to be_selected
+        expect(cheese).not_to be_selected
+      end
+
+      it 'should get enabled' do
+        driver.navigate.to url_for('formPage.html')
+        expect(driver.find_element(id: 'notWorking')).not_to be_enabled
+      end
+
+      it 'should get text' do
+        driver.navigate.to url_for('xhtmlTest.html')
+        expect(driver.find_element(class: 'header').text).to eq('XHTML Might Be The Future')
+      end
+
+      not_compliant_on browser: :safari do
+        it 'should get displayed' do
+          driver.navigate.to url_for('xhtmlTest.html')
+          expect(driver.find_element(class: 'header')).to be_displayed
+        end
+      end
+
+      context 'size and location' do
+        it 'should get current location' do
+          driver.navigate.to url_for('xhtmlTest.html')
+          loc = driver.find_element(class: 'header').location
+
+          expect(loc.x).to be >= 1
+          expect(loc.y).to be >= 1
+        end
+
+        it 'should get location once scrolled into view' do
+          driver.navigate.to url_for('javascriptPage.html')
+          loc = driver.find_element(id: 'keyUp').location_once_scrolled_into_view
+
+          expect(loc.x).to be >= 1
+          expect(loc.y).to be >= 0 # can be 0 if scrolled to the top
+        end
+
+        it 'should get size' do
+          driver.navigate.to url_for('xhtmlTest.html')
+          size = driver.find_element(class: 'header').size
+
+          expect(size.width).to be > 0
+          expect(size.height).to be > 0
+        end
+
+        it 'should get rect' do
+          driver.navigate.to url_for('xhtmlTest.html')
+          rect = driver.find_element(class: 'header').rect
+
+          expect(rect.x).to be > 0
+          expect(rect.y).to be > 0
+          expect(rect.width).to be > 0
+          expect(rect.height).to be > 0
+        end
+      end
+
+      # Firefox - Pointer actions not in firefox stable yet
+      not_compliant_on browser: [:safari, :firefox, :ff_nightly] do
+        it 'should drag and drop' do
+          driver.navigate.to url_for('dragAndDropTest.html')
+
+          img1 = driver.find_element(id: 'test1')
+          img2 = driver.find_element(id: 'test2')
+
+          driver.action.drag_and_drop_by(img1, 100, 100)
+                .drag_and_drop(img2, img1)
+                .perform
+
+          expect(img1.location).to eq(img2.location)
+        end
+      end
+
+      it 'should get css property' do
+        driver.navigate.to url_for('javascriptPage.html')
+        element = driver.find_element(id: 'green-parent')
+
+        style1 = element.css_value('background-color')
+        style2 = element.style('background-color') # backwards compatibility
+
+        acceptable = ['rgb(0, 128, 0)', '#008000', 'rgba(0,128,0,1)', 'rgba(0, 128, 0, 1)']
+        expect(acceptable).to include(style1, style2)
+      end
+
+      it 'should know when two elements are equal' do
+        driver.navigate.to url_for('simpleTest.html')
+
+        body = driver.find_element(tag_name: 'body')
+        xbody = driver.find_element(xpath: '//body')
+        jsbody = driver.execute_script('return document.getElementsByTagName("body")[0]')
+
+        expect(body).to eq(xbody)
+        expect(body).to eq(jsbody)
+        expect(body).to eql(xbody)
+        expect(body).to eql(jsbody)
+      end
+
+      it 'should know when element arrays are equal' do
+        driver.navigate.to url_for('simpleTest.html')
+
+        tags = driver.find_elements(tag_name: 'div')
+        jstags = driver.execute_script('return document.getElementsByTagName("div")')
+
+        expect(tags).to eq(jstags)
+      end
+
+      it 'should know when two elements are not equal' do
+        driver.navigate.to url_for('simpleTest.html')
+
+        elements = driver.find_elements(tag_name: 'p')
+        p1 = elements.fetch(0)
+        p2 = elements.fetch(1)
+
+        expect(p1).not_to eq(p2)
+        expect(p1).not_to eql(p2)
+      end
+
+      it 'should return the same #hash for equal elements when found by Driver#find_element' do
+        driver.navigate.to url_for('simpleTest.html')
+
+        body = driver.find_element(tag_name: 'body')
+        xbody = driver.find_element(xpath: '//body')
+
+        expect(body.hash).to eq(xbody.hash)
+      end
+
+      it 'should return the same #hash for equal elements when found by Driver#find_elements' do
+        driver.navigate.to url_for('simpleTest.html')
+
+        body = driver.find_elements(tag_name: 'body').fetch(0)
+        xbody = driver.find_elements(xpath: '//body').fetch(0)
+
+        expect(body.hash).to eq(xbody.hash)
+      end
     end
-  end
-
-  it "should send string keys" do
-    driver.navigate.to url_for("formPage.html")
-    driver.find_element(:id, "working").send_keys("foo", "bar")
-  end
-
-  not_compliant_on :browser => [:android, :iphone, :safari] do
-    it "should send key presses" do
-      driver.navigate.to url_for("javascriptPage.html")
-      key_reporter = driver.find_element(:id, 'keyReporter')
-
-      key_reporter.send_keys("Tet", :arrow_left, "s")
-      key_reporter.attribute('value').should == "Test"
-    end
-  end
-
-  # PhantomJS on windows issue: https://github.com/ariya/phantomjs/issues/10993
-  not_compliant_on({:browser => [:android, :iphone, :safari, :edge]}, {:browser => :phantomjs, :platform => :windows}) do
-    it "should handle file uploads" do
-      driver.navigate.to url_for("formPage.html")
-
-      element = driver.find_element(:id, 'upload')
-      element.attribute('value').should be_empty
-
-      file = Tempfile.new('file-upload')
-      path = file.path
-      path.gsub!("/", "\\") if WebDriver::Platform.windows?
-
-      element.send_keys path
-
-      element.attribute('value').should include(File.basename(path))
-    end
-  end
-
-  it "should get attribute value" do
-    driver.navigate.to url_for("formPage.html")
-    driver.find_element(:id, "withText").attribute("rows").should == "5"
-  end
-
-  not_compliant_on :browser => :edge do
-    it "should return nil for non-existent attributes" do
-      driver.navigate.to url_for("formPage.html")
-      driver.find_element(:id, "withText").attribute("nonexistent").should be_nil
-    end
-  end
-
-  it "should clear" do
-    driver.navigate.to url_for("formPage.html")
-    driver.find_element(:id, "withText").clear
-  end
-
-  not_compliant_on :browser => :android do
-    it "should get and set selected" do
-      driver.navigate.to url_for("formPage.html")
-
-      cheese = driver.find_element(:id, "cheese")
-      peas   = driver.find_element(:id, "peas")
-
-      cheese.click
-
-      cheese.should be_selected
-      peas.should_not be_selected
-
-      peas.click
-
-      peas.should be_selected
-      cheese.should_not be_selected
-    end
-  end
-
-  it "should get enabled" do
-    driver.navigate.to url_for("formPage.html")
-    driver.find_element(:id, "notWorking").should_not be_enabled
-  end
-
-  it "should get text" do
-    driver.navigate.to url_for("xhtmlTest.html")
-    driver.find_element(:class, "header").text.should == "XHTML Might Be The Future"
-  end
-
-  it "should get displayed" do
-    driver.navigate.to url_for("xhtmlTest.html")
-    driver.find_element(:class, "header").should be_displayed
-  end
-
-  # Edge does not yet support /session/:sessionId/element/:id/location
-  #   http://dev.modern.ie/platform/status/webdriver/details/
-  not_compliant_on :browser => :edge do
-    it "should get location" do
-      driver.navigate.to url_for("xhtmlTest.html")
-      loc = driver.find_element(:class, "header").location
-
-      loc.x.should >= 1
-      loc.y.should >= 1
-    end
-  end
-
-  # Edge does not yet support /session/:sessionId/element/:id/location_in_view
-  #   http://dev.modern.ie/platform/status/webdriver/details/
-  not_compliant_on :browser => [:iphone, :edge] do
-    it "should get location once scrolled into view" do
-      driver.navigate.to url_for("javascriptPage.html")
-      loc = driver.find_element(:id, 'keyUp').location_once_scrolled_into_view
-
-      loc.x.should >= 1
-      loc.y.should >= 0 # can be 0 if scrolled to the top
-    end
-  end
-
-  # Edge does not yet support /session/:sessionId/element/:id/size
-  #   http://dev.modern.ie/platform/status/webdriver/details/
-  not_compliant_on :browser => :edge do
-    it "should get size" do
-      driver.navigate.to url_for("xhtmlTest.html")
-      size = driver.find_element(:class, "header").size
-
-      size.width.should > 0
-      size.height.should > 0
-    end
-  end
-
-  compliant_on :driver => [:ie, :chrome] do # Firefox w/native events: issue 1771
-    it "should drag and drop" do
-      driver.navigate.to url_for("dragAndDropTest.html")
-
-      img1 = driver.find_element(:id, "test1")
-      img2 = driver.find_element(:id, "test2")
-
-      driver.action.drag_and_drop_by(img1, 100, 100).
-                    drag_and_drop(img2, img1).
-                    perform
-
-      img1.location.should == img2.location
-    end
-  end
-
-  not_compliant_on :browser => [:android] do # android returns 'green'
-    it "should get css property" do
-      driver.navigate.to url_for("javascriptPage.html")
-      element = driver.find_element(:id, "green-parent")
-
-      style1 = element.css_value("background-color")
-      style2 = element.style("background-color") # backwards compatibility
-
-      acceptable = ["rgb(0, 128, 0)", "#008000", 'rgba(0,128,0,1)', 'rgba(0, 128, 0, 1)']
-      acceptable.should include(style1, style2)
-    end
-  end
-
-  # Edge does not yet support xpath
-  not_compliant_on :browser => :edge do
-    it "should know when two elements are equal" do
-      driver.navigate.to url_for("simpleTest.html")
-
-      body = driver.find_element(:tag_name, 'body')
-      xbody = driver.find_element(:xpath, "//body")
-
-      body.should == xbody
-      body.should eql(xbody)
-    end
-  end
-
-  not_compliant_on :browser => :phantomjs do
-    it "should know when two elements are not equal" do
-      driver.navigate.to url_for("simpleTest.html")
-
-      elements = driver.find_elements(:tag_name, 'p')
-      p1 = elements.fetch(0)
-      p2 = elements.fetch(1)
-
-      p1.should_not == p2
-      p1.should_not eql(p2)
-    end
-  end
-
-  # Edge does not yet support xpath
-  not_compliant_on :browser => :edge do
-    it "should return the same #hash for equal elements when found by Driver#find_element" do
-      driver.navigate.to url_for("simpleTest.html")
-
-      body = driver.find_element(:tag_name, 'body')
-      xbody = driver.find_element(:xpath, "//body")
-
-      body.hash.should == xbody.hash
-    end
-  end
-
-  # Edge does not yet support xpath
-  not_compliant_on :browser => :edge do
-    it "should return the same #hash for equal elements when found by Driver#find_elements" do
-      driver.navigate.to url_for("simpleTest.html")
-
-      body = driver.find_elements(:tag_name, 'body').fetch(0)
-      xbody = driver.find_elements(:xpath, "//body").fetch(0)
-
-      body.hash.should == xbody.hash
-    end
-  end
-
-end
+  end # WebDriver
+end # Selenium

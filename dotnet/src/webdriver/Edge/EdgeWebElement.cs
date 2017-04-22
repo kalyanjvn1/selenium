@@ -16,14 +16,7 @@
 // limitations under the License.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing;
-using System.Globalization;
-using OpenQA.Selenium.Internal;
 using OpenQA.Selenium.Remote;
-
 
 namespace OpenQA.Selenium.Edge
 {
@@ -32,9 +25,8 @@ namespace OpenQA.Selenium.Edge
     /// </summary>
     public class EdgeWebElement : RemoteWebElement
     {
-        #region Constructor
         /// <summary>
-        /// Initializes a new instance of the EdgeWebElement class
+        /// Initializes a new instance of the <see cref="EdgeWebElement"/> class
         /// </summary>
         /// <param name="parent">Driver in use</param>
         /// <param name="elementId">Id of the element</param>
@@ -42,6 +34,5 @@ namespace OpenQA.Selenium.Edge
             : base(parent, elementId)
         {
         }
-        #endregion
     }
 }

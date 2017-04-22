@@ -20,39 +20,32 @@ package org.openqa.grid.internal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.openqa.grid.common.RegistrationRequest.ID;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.openqa.grid.common.RegistrationRequest;
 import org.openqa.grid.internal.listeners.RegistrationListener;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.openqa.grid.internal.utils.configuration.GridNodeConfiguration;
 
 public class RemoteProxySlowSetup {
 
-  private static RemoteProxy p1;
-  private static RemoteProxy p2;
+  private RemoteProxy p1;
+  private RemoteProxy p2;
 
-  private static Registry registry;
+  private Registry registry;
 
-  @BeforeClass
-  public static void setup() {
+  @Before
+  public void setup() {
     registry = Registry.newInstance();
     // create 2 proxy that are equal and have a slow onRegistration
     // p1.equals(p2) = true
-    RegistrationRequest req1 = new RegistrationRequest();
-    Map<String, Object> config1 = new HashMap<>();
-    config1.put(ID, "abc");
-    req1.setConfiguration(config1);
+    GridNodeConfiguration config1 = new GridNodeConfiguration();
+    RegistrationRequest req1 = new RegistrationRequest(config1);
     p1 = new SlowRemoteSetup(req1,registry);
 
-    RegistrationRequest req2 = new RegistrationRequest();
-    Map<String, Object> config2 = new HashMap<>();
-    config2.put(ID, "abc2");
-    req2.setConfiguration(config2);
+    GridNodeConfiguration config2 = new GridNodeConfiguration();
+    RegistrationRequest req2 = new RegistrationRequest(config2);
     p2 = new SlowRemoteSetup(req2,registry);
   }
 
@@ -78,48 +71,47 @@ public class RemoteProxySlowSetup {
 
   }
 
-  @AfterClass
-  public static void teardown() {
+  @After
+  public void teardown() {
     registry.stop();
   }
-}
 
+  private static class SlowRemoteSetup extends BaseRemoteProxy implements RegistrationListener {
 
-class SlowRemoteSetup extends BaseRemoteProxy implements RegistrationListener {
+    private boolean flag = false;
+    private static boolean error = false;
 
-  boolean flag = false;
-  static boolean error = false;
-
-  // update flag to true. It should happen only once, so if flag is already
-  // true, set error to true.
-  private synchronized void updateFlag() {
-    if (flag) {
-      error = true;
+    // update flag to true. It should happen only once, so if flag is already
+    // true, set error to true.
+    private synchronized void updateFlag() {
+      if (flag) {
+        error = true;
+      }
+      flag = true;
     }
-    flag = true;
-  }
 
-  public SlowRemoteSetup(RegistrationRequest req,Registry registry) {
-    super(req, registry);
-  }
-
-  public void beforeRegistration() {
-    try {
-      updateFlag();
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+    public SlowRemoteSetup(RegistrationRequest req,Registry registry) {
+      super(req, registry);
     }
-  }
 
-  @Override
-  public boolean equals(Object obj) {
-    return true;
-  }
+    public void beforeRegistration() {
+      try {
+        updateFlag();
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
 
-  @Override
-  public int hashCode() {
-    return 42;
-  }
+    @Override
+    public boolean equals(Object obj) {
+      return true;
+    }
 
+    @Override
+    public int hashCode() {
+      return 42;
+    }
+
+  }
 }

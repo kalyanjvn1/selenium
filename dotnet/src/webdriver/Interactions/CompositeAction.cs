@@ -16,9 +16,7 @@
 // limitations under the License.
 // </copyright>
 
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace OpenQA.Selenium.Interactions
 {
@@ -41,7 +39,6 @@ namespace OpenQA.Selenium.Interactions
             return this;
         }
 
-        #region IAction Members
         /// <summary>
         /// Performs the actions defined in this list of actions.
         /// </summary>
@@ -52,7 +49,5 @@ namespace OpenQA.Selenium.Interactions
                 action.Perform();
             }
         }
-
-        #endregion
     }
 }

@@ -17,10 +17,8 @@
 // </copyright>
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Text;
 
 namespace OpenQA.Selenium.Internal
 {
@@ -140,7 +138,7 @@ if (document.__$webdriverPageId != '{1}') {{
                     if (timeoutFlag > 0)
                     {
                         throw new WebDriverTimeoutException("Timed out waiting for async script callback."
-                            + "\nElapsed time: " + elapsedTime.Milliseconds + "ms"
+                            + "\nElapsed time: " + elapsedTime.Milliseconds + "milliseconds"
                             + "\nScript: " + script);
                     }
                 }

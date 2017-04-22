@@ -17,7 +17,6 @@
 // </copyright>
 
 using System.Collections.Generic;
-using Newtonsoft.Json;
 
 namespace OpenQA.Selenium.Remote
 {
@@ -93,7 +92,6 @@ namespace OpenQA.Selenium.Remote
         /// <summary>
         /// Gets or sets the message from the response
         /// </summary>
-        [JsonProperty("message")]
         public string Message
         {
             get { return this.message; }
@@ -103,7 +101,6 @@ namespace OpenQA.Selenium.Remote
         /// <summary>
         /// Gets or sets the class name that threw the error
         /// </summary>
-        [JsonProperty("class")]
         public string ClassName
         {
             get { return this.className; }
@@ -113,7 +110,6 @@ namespace OpenQA.Selenium.Remote
         /// <summary>
         /// Gets or sets the screenshot of the error
         /// </summary>
-        [JsonProperty("screen")]
         public string Screenshot
         {
             // TODO: (JimEvans) Change this to return an Image.
@@ -124,7 +120,6 @@ namespace OpenQA.Selenium.Remote
         /// <summary>
         /// Gets or sets the stack trace of the error
         /// </summary>
-        [JsonProperty("stackTrace")]
         public StackTraceElement[] StackTrace
         {
             get { return this.stackTrace; }

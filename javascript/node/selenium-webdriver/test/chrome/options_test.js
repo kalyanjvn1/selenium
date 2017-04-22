@@ -21,6 +21,7 @@ var fs = require('fs');
 
 var webdriver = require('../..'),
     chrome = require('../../chrome'),
+    symbols = require('../../lib/symbols'),
     proxy = require('../../proxy'),
     assert = require('../../testing/assert');
 
@@ -28,7 +29,6 @@ var test = require('../../lib/test');
 
 
 describe('chrome.Options', function() {
-
   describe('fromCapabilities', function() {
 
     it('should return a new Options instance if none were defined',
@@ -58,7 +58,7 @@ describe('chrome.Options', function() {
       });
 
       var options = chrome.Options.fromCapabilities(caps);
-      var json = options.serialize();
+      var json = options[symbols.serialize]();
 
       assert(json.args.length).equalTo(2);
       assert(json.args[0]).equalTo('a');
@@ -79,7 +79,7 @@ describe('chrome.Options', function() {
           });
 
           var options = chrome.Options.fromCapabilities(caps);
-          var json = options.serialize();
+          var json = options[symbols.serialize]();
           assert(json.args).isUndefined();
           assert(json.binary).isUndefined();
           assert(json.detach).isUndefined();
@@ -109,10 +109,10 @@ describe('chrome.Options', function() {
   describe('addArguments', function() {
     it('takes var_args', function() {
       var options = new chrome.Options();
-      assert(options.serialize().args).isUndefined();
+      assert(options[symbols.serialize]().args).isUndefined();
 
       options.addArguments('a', 'b');
-      var json = options.serialize();
+      var json = options[symbols.serialize]();
       assert(json.args.length).equalTo(2);
       assert(json.args[0]).equalTo('a');
       assert(json.args[1]).equalTo('b');
@@ -120,10 +120,10 @@ describe('chrome.Options', function() {
 
     it('flattens input arrays', function() {
       var options = new chrome.Options();
-      assert(options.serialize().args).isUndefined();
+      assert(options[symbols.serialize]().args).isUndefined();
 
       options.addArguments(['a', 'b'], 'c', [1, 2], 3);
-      var json = options.serialize();
+      var json = options[symbols.serialize]();
       assert(json.args.length).equalTo(6);
       assert(json.args[0]).equalTo('a');
       assert(json.args[1]).equalTo('b');
@@ -163,7 +163,9 @@ describe('chrome.Options', function() {
   describe('serialize', function() {
     it('base64 encodes extensions', function() {
       var expected = fs.readFileSync(__filename, 'base64');
-      var wire = new chrome.Options().addExtensions(__filename).serialize();
+      var wire = new chrome.Options()
+          .addExtensions(__filename)
+          [symbols.serialize]();
       assert(wire.extensions.length).equalTo(1);
       assert(wire.extensions[0]).equalTo(expected);
     });
@@ -203,22 +205,22 @@ test.suite(function(env) {
   var driver;
 
   test.afterEach(function() {
-    driver.quit();
+    return driver.quit();
   });
 
   describe('Chrome options', function() {
-    test.it('can start Chrome with custom args', function() {
+    test.it('can start Chrome with custom args', function*() {
       var options = new chrome.Options().
           addArguments('user-agent=foo;bar');
 
-      driver = env.builder().
-          setChromeOptions(options).
-          build();
+      driver = yield env.builder()
+          .setChromeOptions(options)
+          .build();
 
-      driver.get(test.Pages.ajaxyPage);
+      yield driver.get(test.Pages.ajaxyPage);
 
-      var userAgent = driver.executeScript(
-          'return window.navigator.userAgent');
+      var userAgent =
+          yield driver.executeScript('return window.navigator.userAgent');
       assert(userAgent).equalTo('foo;bar');
     });
   });

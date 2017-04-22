@@ -14,17 +14,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ctime>
-#include "errorcodes.h"
-#include "ElementRepository.h"
-#include "HookProcessor.h"
 #include "InputManager.h"
-#include "interactions.h"
+
+#include <ctime>
+
+#include "errorcodes.h"
 #include "json.h"
 #include "keycodes.h"
 #include "logging.h"
+
+#include "Element.h"
+#include "ElementRepository.h"
+#include "HookProcessor.h"
+#include "InteractionsManager.h"
 #include "Script.h"
+#include "StringUtilities.h"
 #include "Generated/atoms.h"
+
+#define USER_INTERACTION_MUTEX_NAME L"WebDriverUserInteractionMutex"
+#define WAIT_TIME_IN_MILLISECONDS_PER_INPUT_EVENT 100
 
 namespace webdriver {
 
@@ -46,9 +54,14 @@ InputManager::InputManager() {
   CComVariant mouse_state;
   mouse_state.vt = VT_NULL;
   this->mouse_state_ = mouse_state;
+
+  this->interactions_manager_ = new InteractionsManager();
 }
 
 InputManager::~InputManager(void) {
+  if (this->interactions_manager_ != NULL) {
+    delete this->interactions_manager_;
+  }
 }
 
 void InputManager::Initialize(ElementRepository* element_map) {
@@ -239,10 +252,10 @@ int InputManager::MouseClick(BrowserHandle browser_wrapper, int button) {
       this->AddMouseInput(browser_window_handle, up_flag, this->last_known_mouse_x_, this->last_known_mouse_y_);
     } else {
       LOG(DEBUG) << "Using SendMessage method for mouse click";
-      clickAt(browser_window_handle,
-              this->last_known_mouse_x_,
-              this->last_known_mouse_y_,
-              button);
+      this->interactions_manager_->clickAt(browser_window_handle,
+                                           this->last_known_mouse_x_,
+                                           this->last_known_mouse_y_,
+                                           button);
     }
   } else {
     LOG(DEBUG) << "Using synthetic events for mouse click";
@@ -298,10 +311,10 @@ int InputManager::MouseButtonDown(BrowserHandle browser_wrapper) {
     } else { 
       LOG(DEBUG) << "Using SendMessage method for mouse button down";
       //TODO: json wire protocol allows 3 mouse button types for this command
-      mouseDownAt(browser_window_handle,
-                  this->last_known_mouse_x_,
-                  this->last_known_mouse_y_,
-                  MOUSEBUTTON_LEFT);
+      this->interactions_manager_->mouseDownAt(browser_window_handle,
+                                               this->last_known_mouse_x_,
+                                               this->last_known_mouse_y_,
+                                               MOUSEBUTTON_LEFT);
     }
   } else {
     LOG(DEBUG) << "Using synthetic events for mouse button down";
@@ -335,10 +348,10 @@ int InputManager::MouseButtonUp(BrowserHandle browser_wrapper) {
     } else { 
       LOG(DEBUG) << "Using SendMessage method for mouse button up";
       //TODO: json wire protocol allows 3 mouse button types for this command
-      mouseUpAt(browser_window_handle,
-                this->last_known_mouse_x_,
-                this->last_known_mouse_y_,
-                MOUSEBUTTON_LEFT);
+      this->interactions_manager_->mouseUpAt(browser_window_handle,
+                                             this->last_known_mouse_x_,
+                                             this->last_known_mouse_y_,
+                                             MOUSEBUTTON_LEFT);
     }
   } else {
     LOG(DEBUG) << "Using synthetic events for mouse button up";
@@ -374,7 +387,9 @@ int InputManager::MouseDoubleClick(BrowserHandle browser_wrapper) {
       this->AddMouseInput(browser_window_handle, MOUSEEVENTF_LEFTUP, this->last_known_mouse_x_, this->last_known_mouse_y_);
     } else { 
       LOG(DEBUG) << "Using SendMessage method for mouse double click";
-      doubleClickAt(browser_window_handle, this->last_known_mouse_x_, this->last_known_mouse_y_);
+      this->interactions_manager_->doubleClickAt(browser_window_handle,
+                                                 this->last_known_mouse_x_,
+                                                 this->last_known_mouse_y_);
     }
   } else {
     LOG(DEBUG) << "Using synthetic events for mouse double click";
@@ -468,12 +483,12 @@ int InputManager::MouseMoveTo(BrowserHandle browser_wrapper, std::string element
       }
     } else {
       LOG(DEBUG) << "Using SendMessage method for mouse move";
-      LRESULT move_result = mouseMoveTo(browser_window_handle,
-                                        10,
-                                        start_x,
-                                        start_y,
-                                        end_x,
-                                        end_y);
+      LRESULT move_result = this->interactions_manager_->mouseMoveTo(browser_window_handle,
+                                                                     10,
+                                                                     start_x,
+                                                                     start_y,
+                                                                     end_x,
+                                                                     end_y);
     }
     this->last_known_mouse_x_ = end_x;
     this->last_known_mouse_y_ = end_y;
@@ -513,6 +528,14 @@ int InputManager::MouseMoveTo(BrowserHandle browser_wrapper, std::string element
   return status_code;
 }
 
+void InputManager::SetPersistentEvents(bool is_firing) {
+  this->interactions_manager_->setEnablePersistentHover(is_firing);
+}
+
+void InputManager::StopPersistentEvents() {
+  this->interactions_manager_->stopPersistentEventFiring();
+}
+
 int InputManager::SendKeystrokes(BrowserHandle browser_wrapper, Json::Value keystroke_array, bool auto_release_modifier_keys) {
   LOG(TRACE) << "Entering InputManager::SendKeystrokes";
   int status_code = WD_SUCCESS;
@@ -542,9 +565,9 @@ int InputManager::SendKeystrokes(BrowserHandle browser_wrapper, Json::Value keys
       }
     } else {
       LOG(DEBUG) << "Using SendMessage method for sending keys";
-      sendKeys(window_handle, keys.c_str(), 0);
+      this->interactions_manager_->sendKeys(window_handle, keys.c_str(), 0);
       if (auto_release_modifier_keys) {
-        releaseModifierKeys(window_handle, 0);
+        this->interactions_manager_->releaseModifierKeys(window_handle, 0);
       }
     }
   } else {
@@ -609,340 +632,360 @@ void InputManager::AddMouseInput(HWND window_handle, long input_action, int x, i
 
 void InputManager::AddKeyboardInput(HWND window_handle, wchar_t character) {
   LOG(TRACE) << "Entering InputManager::AddKeyboardInput";
-  if (character == WD_KEY_SHIFT || character == WD_KEY_CONTROL || character == WD_KEY_ALT || character == WD_KEY_NULL) {
+
+  if (this->IsModifierKey(character)) {
+    KeyInfo modifier_key_info = { 0, 0, false, false };
     if (character == WD_KEY_SHIFT || (character == WD_KEY_NULL && this->is_shift_pressed_)) {
-      INPUT shift_input;
-      shift_input.type = INPUT_KEYBOARD;
-      shift_input.ki.wVk = VK_SHIFT;
-      shift_input.ki.dwFlags = 0;
-      shift_input.ki.wScan = 0;
-      shift_input.ki.dwExtraInfo = 0;
-      shift_input.ki.time = 0;
+      // If the character represents the Shift key, or represents the 
+      // "release all modifiers" key and the Shift key is down, send
+      // the appropriate down or up keystroke for the Shift key.
+      modifier_key_info.key_code = VK_SHIFT;
+      this->CreateKeyboardInputItem(modifier_key_info, 0, this->is_shift_pressed_);
       if (this->is_shift_pressed_) {
-        shift_input.ki.dwFlags |= KEYEVENTF_KEYUP;
         this->is_shift_pressed_ = false;
       } else {
         this->is_shift_pressed_ = true;
       }
-      this->inputs_.push_back(shift_input);
     }
 
     if (character == WD_KEY_CONTROL || (character == WD_KEY_NULL && this->is_control_pressed_)) {
-      INPUT control_input;
-      control_input.type = INPUT_KEYBOARD;
-      control_input.ki.wVk = VK_CONTROL;
-      control_input.ki.dwFlags = 0;
-      control_input.ki.wScan = 0;
-      control_input.ki.dwExtraInfo = 0;
-      control_input.ki.time = 0;
+      // If the character represents the Control key, or represents the 
+      // "release all modifiers" key and the Control key is down, send
+      // the appropriate down or up keystroke for the Control key.
+      modifier_key_info.key_code = VK_CONTROL;
+      this->CreateKeyboardInputItem(modifier_key_info, 0, this->is_control_pressed_);
       if (this->is_control_pressed_) {
-        control_input.ki.dwFlags |= KEYEVENTF_KEYUP;
         this->is_control_pressed_ = false;
       } else {
         this->is_control_pressed_ = true;
       }
-      this->inputs_.push_back(control_input);
     }
 
     if (character == WD_KEY_ALT || (character == WD_KEY_NULL && this->is_alt_pressed_)) {
-      INPUT alt_input;
-      alt_input.type = INPUT_KEYBOARD;
-      alt_input.ki.wVk = VK_MENU;
-      alt_input.ki.dwFlags = 0;
-      alt_input.ki.wScan = 0;
-      alt_input.ki.dwExtraInfo = 0;
-      alt_input.ki.time = 0;
+      // If the character represents the Alt key, or represents the 
+      // "release all modifiers" key and the Alt key is down, send
+      // the appropriate down or up keystroke for the Alt key.
+      modifier_key_info.key_code = VK_MENU;
+      this->CreateKeyboardInputItem(modifier_key_info, 0, this->is_alt_pressed_);
       if (this->is_alt_pressed_) {
-        alt_input.ki.dwFlags |= KEYEVENTF_KEYUP;
         this->is_alt_pressed_ = false;
       } else {
         this->is_alt_pressed_ = true;
       }
-      this->inputs_.push_back(alt_input);
     }
     return;
   }
 
-  int flag = 0;
-  DWORD process_id = 0;
-  DWORD thread_id = ::GetWindowThreadProcessId(window_handle, &process_id);
-  HKL layout = ::GetKeyboardLayout(thread_id);
-  UINT scan_code = 0;
-  WORD key_code = 0;
-  bool extended = false;
-  if (character == WD_KEY_CANCEL) {  // ^break
-    key_code = VK_CANCEL;
-    scan_code = VK_CANCEL;
-    extended = true;
-  } else if (character == WD_KEY_HELP) {  // help
-    key_code = VK_HELP;
-    scan_code = VK_HELP;
-  } else if (character == WD_KEY_BACKSPACE) {  // back space
-    key_code = VK_BACK;
-    scan_code = VK_BACK;
-  } else if (character == WD_KEY_TAB) {  // tab
-    key_code = VK_TAB;
-    scan_code = VK_TAB;
-  } else if (character == WD_KEY_CLEAR) {  // clear
-    key_code = VK_CLEAR;
-    scan_code = VK_CLEAR;
-  } else if (character == WD_KEY_RETURN) {  // return
-    key_code = VK_RETURN;
-    scan_code = VK_RETURN;
-  } else if (character == WD_KEY_ENTER) {  // enter
-    key_code = VK_RETURN;
-    scan_code = VK_RETURN;
-  } else if (character == WD_KEY_PAUSE) {  // pause
-    key_code = VK_PAUSE;
-    scan_code = VK_PAUSE;
-    extended = true;
-  } else if (character == WD_KEY_ESCAPE) {  // escape
-    key_code = VK_ESCAPE;
-    scan_code = VK_ESCAPE;
-  } else if (character == WD_KEY_SPACE) {  // space
-    key_code = VK_SPACE;
-    scan_code = VK_SPACE;
-  } else if (character == WD_KEY_PAGEUP) {  // page up
-    key_code = VK_PRIOR;
-    scan_code = VK_PRIOR;
-    extended = true;
-  } else if (character == WD_KEY_PAGEDOWN) {  // page down
-    key_code = VK_NEXT;
-    scan_code = VK_NEXT;
-    extended = true;
-  } else if (character == WD_KEY_END) {  // end
-    key_code = VK_END;
-    scan_code = VK_END;
-    extended = true;
-  } else if (character == WD_KEY_HOME) {  // home
-    key_code = VK_HOME;
-    scan_code = VK_HOME;
-    extended = true;
-  } else if (character == WD_KEY_LEFT) {  // left arrow
-    key_code = VK_LEFT;
-    scan_code = VK_LEFT;
-    extended = true;
-  } else if (character == WD_KEY_UP) {  // up arrow
-    key_code = VK_UP;
-    scan_code = VK_UP;
-    extended = true;
-  } else if (character == WD_KEY_RIGHT) {  // right arrow
-    key_code = VK_RIGHT;
-    scan_code = VK_RIGHT;
-    extended = true;
-  } else if (character == WD_KEY_DOWN) {  // down arrow
-    key_code = VK_DOWN;
-    scan_code = VK_DOWN;
-    extended = true;
-  } else if (character == WD_KEY_INSERT) {  // insert
-    key_code = VK_INSERT;
-    scan_code = VK_INSERT;
-    extended = true;
-  } else if (character == WD_KEY_DELETE) {  // delete
-    key_code = VK_DELETE;
-    scan_code = VK_DELETE;
-    extended = true;
-  } else if (character == WD_KEY_SEMICOLON) {  // semicolon
-    key_code = VkKeyScanExW(L';', layout);
-    scan_code = MapVirtualKeyExW(LOBYTE(key_code), 0, layout);
-  } else if (character == WD_KEY_EQUALS) {  // equals
-    key_code = VkKeyScanExW(L'=', layout);
-    scan_code = MapVirtualKeyExW(LOBYTE(key_code), 0, layout);
-  } else if (character == WD_KEY_NUMPAD0) {  // numpad0
-    key_code = VK_NUMPAD0;
-    scan_code = VK_NUMPAD0;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD1) {  // numpad1
-    key_code = VK_NUMPAD1;
-    scan_code = VK_NUMPAD1;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD2) {  // numpad2
-    key_code = VK_NUMPAD2;
-    scan_code = VK_NUMPAD2;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD3) {  // numpad3
-    key_code = VK_NUMPAD3;
-    scan_code = VK_NUMPAD3;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD4) {  // numpad4
-    key_code = VK_NUMPAD4;
-    scan_code = VK_NUMPAD4;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD5) {  // numpad5
-    key_code = VK_NUMPAD5;
-    scan_code = VK_NUMPAD5;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD6) {  // numpad6
-    key_code = VK_NUMPAD6;
-    scan_code = VK_NUMPAD6;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD7) {  // numpad7
-    key_code = VK_NUMPAD7;
-    scan_code = VK_NUMPAD7;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD8) {  // numpad8
-    key_code = VK_NUMPAD8;
-    scan_code = VK_NUMPAD8;
-    extended = true;
-  } else if (character == WD_KEY_NUMPAD9) {  // numpad9
-    key_code = VK_NUMPAD9;
-    scan_code = VK_NUMPAD9;
-    extended = true;
-  } else if (character == WD_KEY_MULTIPLY) {  // multiply
-    key_code = VK_MULTIPLY;
-    scan_code = VK_MULTIPLY;
-    extended = true;
-  } else if (character == WD_KEY_ADD) {  // add
-    key_code = VK_ADD;
-    scan_code = VK_ADD;
-    extended = true;
-  } else if (character == WD_KEY_SEPARATOR) {  // separator
-    key_code = VkKeyScanExW(L',', layout);
-    scan_code = MapVirtualKeyExW(LOBYTE(key_code), 0, layout);
-  } else if (character == WD_KEY_SUBTRACT) {  // subtract
-    key_code = VK_SUBTRACT;
-    scan_code = VK_SUBTRACT;
-    extended = true;
-  } else if (character == WD_KEY_DECIMAL) {  // decimal
-    key_code = VK_DECIMAL;
-    scan_code = VK_DECIMAL;
-    extended = true;
-  } else if (character == WD_KEY_DIVIDE) {  // divide
-    key_code = VK_DIVIDE;
-    scan_code = VK_DIVIDE;
-    extended = true;
-  } else if (character == WD_KEY_F1) {  // F1
-    key_code = VK_F1;
-    scan_code = VK_F1;
-  } else if (character == WD_KEY_F2) {  // F2
-    key_code = VK_F2;
-    scan_code = VK_F2;
-  } else if (character == WD_KEY_F3) {  // F3
-    key_code = VK_F3;
-    scan_code = VK_F3;
-  } else if (character == WD_KEY_F4) {  // F4
-    key_code = VK_F4;
-    scan_code = VK_F4;
-  } else if (character == WD_KEY_F5) {  // F5
-    key_code = VK_F5;
-    scan_code = VK_F5;
-  } else if (character == WD_KEY_F6) {  // F6
-    key_code = VK_F6;
-    scan_code = VK_F6;
-  } else if (character == WD_KEY_F7) {  // F7
-    key_code = VK_F7;
-    scan_code = VK_F7;
-  } else if (character == WD_KEY_F8) {  // F8
-    key_code = VK_F8;
-    scan_code = VK_F8;
-  } else if (character == WD_KEY_F9) {  // F9
-    key_code = VK_F9;
-    scan_code = VK_F9;
-  } else if (character == WD_KEY_F10) {  // F10
-    key_code = VK_F10;
-    scan_code = VK_F10;
-  } else if (character == WD_KEY_F11) {  // F11
-    key_code = VK_F11;
-    scan_code = VK_F11;
-  } else if (character == WD_KEY_F12) {  // F12
-    key_code = VK_F12;
-    scan_code = VK_F12;
-  } else if (character == L'\n') {    // line feed
-    key_code = VK_RETURN;
-    scan_code = VK_RETURN;
-  } else if (character == L'\r') {    // carriage return
-    // skip it
-  } else {
-    key_code = VkKeyScanExW(character, layout);
-    scan_code = MapVirtualKeyExW(LOBYTE(key_code), 0, layout);
-    if (!scan_code || (key_code == 0xFFFFU)) {
+  KeyInfo key_info = this->GetKeyInfo(window_handle, character);
+  if (!key_info.is_webdriver_key) {
+    if (!key_info.scan_code || (key_info.key_code == 0xFFFFU)) {
       LOG(WARN) << "No translation for key. Assuming unicode input: " << character;
-      INPUT unicode_down;
-      unicode_down.type = INPUT_KEYBOARD;
-      unicode_down.ki.dwFlags = KEYEVENTF_UNICODE;
-      unicode_down.ki.wVk = 0;
-      unicode_down.ki.wScan = static_cast<int>(character);
-      unicode_down.ki.dwExtraInfo = 0;
-      unicode_down.ki.time = 0;
-      this->inputs_.push_back(unicode_down);
 
-      INPUT unicode_up;
-      unicode_up.type = INPUT_KEYBOARD;
-      unicode_up.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-      unicode_down.ki.wVk = 0;
-      unicode_up.ki.wScan = static_cast<int>(character);
-      unicode_up.ki.dwExtraInfo = 0;
-      unicode_up.ki.time = 0;
-      this->inputs_.push_back(unicode_up);
+      key_info.scan_code = static_cast<WORD>(character);
+      key_info.key_code = 0;
+      key_info.is_extended_key = false;
+
+      this->CreateKeyboardInputItem(key_info, KEYEVENTF_UNICODE, false);
+      this->CreateKeyboardInputItem(key_info, KEYEVENTF_UNICODE, true);
       return;
     }
   }
 
-  INPUT key_down;
-  INPUT key_up;
-  if (HIBYTE(key_code) == 1 && !this->is_shift_pressed_) {
-    INPUT shift_down;
-    shift_down.type = INPUT_KEYBOARD;
-    shift_down.ki.dwFlags = 0;
-    shift_down.ki.wScan = 0;
-    shift_down.ki.wVk = VK_SHIFT;
-    shift_down.ki.dwExtraInfo = 0;
-    shift_down.ki.time = 0;
-    this->inputs_.push_back(shift_down);
+  if (HIBYTE(key_info.key_code) == 1 && !this->is_shift_pressed_) {
+    // Requested key is a Shift + <key>. Thus, don't use the key code.
+    // Instead, send a Shift keystroke, and use the scan code of the key. 
+    KeyInfo shift_key_info = { VK_SHIFT, 0, false, false };
+    this->CreateKeyboardInputItem(shift_key_info, 0, false);
 
-    key_down.type = INPUT_KEYBOARD;
-    key_down.ki.dwFlags = KEYEVENTF_SCANCODE;
-    if (extended) {
-      key_down.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
-    }
-    key_down.ki.wScan = scan_code;
-    key_down.ki.wVk = 0;
-    key_down.ki.dwExtraInfo = 0;
-    key_down.ki.time = 0;
-    this->inputs_.push_back(key_down);
+    key_info.key_code = 0;
+    this->CreateKeyboardInputItem(key_info, KEYEVENTF_SCANCODE, false);
+    this->CreateKeyboardInputItem(key_info, KEYEVENTF_SCANCODE, true);
 
-    key_up.type = INPUT_KEYBOARD;
-    key_up.ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_SCANCODE;
-    if (extended) {
-      key_up.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
-    }
-    key_up.ki.wScan = scan_code;
-    key_up.ki.wVk = 0;
-    key_up.ki.dwExtraInfo = 0;
-    key_up.ki.time = 0;
-    this->inputs_.push_back(key_up);
-
-    INPUT shift_up;
-    shift_up.type = INPUT_KEYBOARD;
-    shift_up.ki.dwFlags =  KEYEVENTF_KEYUP;
-    shift_up.ki.wScan = 0;
-    shift_up.ki.wVk = VK_SHIFT;
-    shift_up.ki.dwExtraInfo = 0;
-    shift_up.ki.time = 0;
-    this->inputs_.push_back(shift_up);
+    this->CreateKeyboardInputItem(shift_key_info, 0, true);
   } else {
-    key_down.type = INPUT_KEYBOARD;
-    key_down.ki.dwFlags = 0;
-    if (extended) {
-      key_down.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
-    }
-    key_down.ki.wScan = 0;
-    key_down.ki.wVk = key_code;
-    key_down.ki.dwExtraInfo = 0;
-    key_down.ki.time = 0;
-    this->inputs_.push_back(key_down);
+    key_info.scan_code = 0;
 
-    key_up.type = INPUT_KEYBOARD;
-    key_up.ki.dwFlags = KEYEVENTF_KEYUP;
-    if (extended) {
-      key_up.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
-    }
-    key_up.ki.wScan = 0;
-    key_up.ki.wVk = key_code;
-    key_up.ki.dwExtraInfo = 0;
-    key_up.ki.time = 0;
-    this->inputs_.push_back(key_up);
+    this->CreateKeyboardInputItem(key_info, 0, false);
+    this->CreateKeyboardInputItem(key_info, 0, true);
   }
+}
+
+void InputManager::CreateKeyboardInputItem(KeyInfo key_info,
+                                           DWORD initial_flags,
+                                           bool is_generating_key_up) {
+  INPUT input_element;
+  input_element.type = INPUT_KEYBOARD;
+
+  input_element.ki.wVk = key_info.key_code;
+  input_element.ki.wScan = key_info.scan_code;
+  input_element.ki.dwFlags = initial_flags;
+  input_element.ki.dwExtraInfo = 0;
+  input_element.ki.time = 0;
+
+  if (key_info.is_extended_key) {
+    input_element.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+  }
+  if (is_generating_key_up) {
+    input_element.ki.dwFlags |= KEYEVENTF_KEYUP;
+  }
+
+  this->inputs_.push_back(input_element);
+}
+
+bool InputManager::IsModifierKey(wchar_t character) {
+  return character == WD_KEY_SHIFT ||
+         character == WD_KEY_CONTROL ||
+         character == WD_KEY_ALT ||
+         character == WD_KEY_NULL;
+}
+
+KeyInfo InputManager::GetKeyInfo(HWND window_handle, wchar_t character) {
+  KeyInfo key_info;
+  key_info.is_extended_key = false;
+  key_info.is_webdriver_key = true;
+  DWORD process_id = 0;
+  DWORD thread_id = ::GetWindowThreadProcessId(window_handle, &process_id);
+  HKL layout = ::GetKeyboardLayout(thread_id);
+  if (character == WD_KEY_CANCEL) {  // ^break
+    key_info.key_code = VK_CANCEL;
+    key_info.scan_code = VK_CANCEL;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_HELP) {  // help
+    key_info.key_code = VK_HELP;
+    key_info.scan_code = VK_HELP;
+  }
+  else if (character == WD_KEY_BACKSPACE) {  // back space
+    key_info.key_code = VK_BACK;
+    key_info.scan_code = VK_BACK;
+  }
+  else if (character == WD_KEY_TAB) {  // tab
+    key_info.key_code = VK_TAB;
+    key_info.scan_code = VK_TAB;
+  }
+  else if (character == WD_KEY_CLEAR) {  // clear
+    key_info.key_code = VK_CLEAR;
+    key_info.scan_code = VK_CLEAR;
+  }
+  else if (character == WD_KEY_RETURN) {  // return
+    key_info.key_code = VK_RETURN;
+    key_info.scan_code = VK_RETURN;
+  }
+  else if (character == WD_KEY_ENTER) {  // enter
+    key_info.key_code = VK_RETURN;
+    key_info.scan_code = VK_RETURN;
+  }
+  else if (character == WD_KEY_PAUSE) {  // pause
+    key_info.key_code = VK_PAUSE;
+    key_info.scan_code = VK_PAUSE;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_ESCAPE) {  // escape
+    key_info.key_code = VK_ESCAPE;
+    key_info.scan_code = VK_ESCAPE;
+  }
+  else if (character == WD_KEY_SPACE) {  // space
+    key_info.key_code = VK_SPACE;
+    key_info.scan_code = VK_SPACE;
+  }
+  else if (character == WD_KEY_PAGEUP) {  // page up
+    key_info.key_code = VK_PRIOR;
+    key_info.scan_code = VK_PRIOR;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_PAGEDOWN) {  // page down
+    key_info.key_code = VK_NEXT;
+    key_info.scan_code = VK_NEXT;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_END) {  // end
+    key_info.key_code = VK_END;
+    key_info.scan_code = VK_END;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_HOME) {  // home
+    key_info.key_code = VK_HOME;
+    key_info.scan_code = VK_HOME;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_LEFT) {  // left arrow
+    key_info.key_code = VK_LEFT;
+    key_info.scan_code = VK_LEFT;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_UP) {  // up arrow
+    key_info.key_code = VK_UP;
+    key_info.scan_code = VK_UP;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_RIGHT) {  // right arrow
+    key_info.key_code = VK_RIGHT;
+    key_info.scan_code = VK_RIGHT;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_DOWN) {  // down arrow
+    key_info.key_code = VK_DOWN;
+    key_info.scan_code = VK_DOWN;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_INSERT) {  // insert
+    key_info.key_code = VK_INSERT;
+    key_info.scan_code = VK_INSERT;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_DELETE) {  // delete
+    key_info.key_code = VK_DELETE;
+    key_info.scan_code = VK_DELETE;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_SEMICOLON) {  // semicolon
+    key_info.key_code = VkKeyScanExW(L';', layout);
+    key_info.scan_code = MapVirtualKeyExW(LOBYTE(key_info.key_code), 0, layout);
+  }
+  else if (character == WD_KEY_EQUALS) {  // equals
+    key_info.key_code = VkKeyScanExW(L'=', layout);
+    key_info.scan_code = MapVirtualKeyExW(LOBYTE(key_info.key_code), 0, layout);
+  }
+  else if (character == WD_KEY_NUMPAD0) {  // numpad0
+    key_info.key_code = VK_NUMPAD0;
+    key_info.scan_code = VK_NUMPAD0;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD1) {  // numpad1
+    key_info.key_code = VK_NUMPAD1;
+    key_info.scan_code = VK_NUMPAD1;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD2) {  // numpad2
+    key_info.key_code = VK_NUMPAD2;
+    key_info.scan_code = VK_NUMPAD2;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD3) {  // numpad3
+    key_info.key_code = VK_NUMPAD3;
+    key_info.scan_code = VK_NUMPAD3;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD4) {  // numpad4
+    key_info.key_code = VK_NUMPAD4;
+    key_info.scan_code = VK_NUMPAD4;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD5) {  // numpad5
+    key_info.key_code = VK_NUMPAD5;
+    key_info.scan_code = VK_NUMPAD5;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD6) {  // numpad6
+    key_info.key_code = VK_NUMPAD6;
+    key_info.scan_code = VK_NUMPAD6;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD7) {  // numpad7
+    key_info.key_code = VK_NUMPAD7;
+    key_info.scan_code = VK_NUMPAD7;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD8) {  // numpad8
+    key_info.key_code = VK_NUMPAD8;
+    key_info.scan_code = VK_NUMPAD8;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_NUMPAD9) {  // numpad9
+    key_info.key_code = VK_NUMPAD9;
+    key_info.scan_code = VK_NUMPAD9;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_MULTIPLY) {  // multiply
+    key_info.key_code = VK_MULTIPLY;
+    key_info.scan_code = VK_MULTIPLY;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_ADD) {  // add
+    key_info.key_code = VK_ADD;
+    key_info.scan_code = VK_ADD;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_SEPARATOR) {  // separator
+    key_info.key_code = VkKeyScanExW(L',', layout);
+    key_info.scan_code = MapVirtualKeyExW(LOBYTE(key_info.key_code), 0, layout);
+  }
+  else if (character == WD_KEY_SUBTRACT) {  // subtract
+    key_info.key_code = VK_SUBTRACT;
+    key_info.scan_code = VK_SUBTRACT;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_DECIMAL) {  // decimal
+    key_info.key_code = VK_DECIMAL;
+    key_info.scan_code = VK_DECIMAL;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_DIVIDE) {  // divide
+    key_info.key_code = VK_DIVIDE;
+    key_info.scan_code = VK_DIVIDE;
+    key_info.is_extended_key = true;
+  }
+  else if (character == WD_KEY_F1) {  // F1
+    key_info.key_code = VK_F1;
+    key_info.scan_code = VK_F1;
+  }
+  else if (character == WD_KEY_F2) {  // F2
+    key_info.key_code = VK_F2;
+    key_info.scan_code = VK_F2;
+  }
+  else if (character == WD_KEY_F3) {  // F3
+    key_info.key_code = VK_F3;
+    key_info.scan_code = VK_F3;
+  }
+  else if (character == WD_KEY_F4) {  // F4
+    key_info.key_code = VK_F4;
+    key_info.scan_code = VK_F4;
+  }
+  else if (character == WD_KEY_F5) {  // F5
+    key_info.key_code = VK_F5;
+    key_info.scan_code = VK_F5;
+  }
+  else if (character == WD_KEY_F6) {  // F6
+    key_info.key_code = VK_F6;
+    key_info.scan_code = VK_F6;
+  }
+  else if (character == WD_KEY_F7) {  // F7
+    key_info.key_code = VK_F7;
+    key_info.scan_code = VK_F7;
+  }
+  else if (character == WD_KEY_F8) {  // F8
+    key_info.key_code = VK_F8;
+    key_info.scan_code = VK_F8;
+  }
+  else if (character == WD_KEY_F9) {  // F9
+    key_info.key_code = VK_F9;
+    key_info.scan_code = VK_F9;
+  }
+  else if (character == WD_KEY_F10) {  // F10
+    key_info.key_code = VK_F10;
+    key_info.scan_code = VK_F10;
+  }
+  else if (character == WD_KEY_F11) {  // F11
+    key_info.key_code = VK_F11;
+    key_info.scan_code = VK_F11;
+  }
+  else if (character == WD_KEY_F12) {  // F12
+    key_info.key_code = VK_F12;
+    key_info.scan_code = VK_F12;
+  }
+  else if (character == L'\n') {    // line feed
+    key_info.key_code = VK_RETURN;
+    key_info.scan_code = VK_RETURN;
+  }
+  else if (character == L'\r') {    // carriage return
+                                    // skip it
+  }
+  else {
+    key_info.key_code = VkKeyScanExW(character, layout);
+    key_info.scan_code = MapVirtualKeyExW(LOBYTE(key_info.key_code), 0, layout);
+    key_info.is_webdriver_key = false;
+  }
+  return key_info;
 }
 
 } // namespace webdriver
@@ -971,6 +1014,19 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
   ++message_count;
   webdriver::HookProcessor::SetDataBufferSize(message_count);
   return ::CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK GetMessageProc(int nCode, WPARAM wParam, LPARAM lParam) {
+  if ((nCode == HC_ACTION) && (wParam == PM_REMOVE)) {
+    MSG* msg = reinterpret_cast<MSG*>(lParam);
+    if (msg->message == WM_USER && msg->wParam == 1234 && msg->lParam == 5678) {
+      int message_count = webdriver::HookProcessor::GetDataBufferSize();
+      message_count += 50;
+      webdriver::HookProcessor::SetDataBufferSize(message_count);
+    }
+  }
+
+  return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
 #ifdef __cplusplus

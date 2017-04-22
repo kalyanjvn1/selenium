@@ -16,10 +16,6 @@
 // limitations under the License.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace OpenQA.Selenium
 {
     /// <summary>
@@ -73,10 +69,10 @@ namespace OpenQA.Selenium
         IWebDriver DefaultContent();
 
         /// <summary>
-        /// Switches to the element that currently has the focus, or the body element 
+        /// Switches to the element that currently has the focus, or the body element
         /// if no element with focus can be detected.
         /// </summary>
-        /// <returns>An <see cref="IWebElement"/> instance representing the element 
+        /// <returns>An <see cref="IWebElement"/> instance representing the element
         /// with the focus, or the body element if no element with focus can be detected.</returns>
         IWebElement ActiveElement();
 

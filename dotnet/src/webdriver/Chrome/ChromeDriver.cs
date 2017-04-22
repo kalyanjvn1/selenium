@@ -17,9 +17,6 @@
 // </copyright>
 
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using OpenQA.Selenium.Internal;
 using OpenQA.Selenium.Remote;
 
 namespace OpenQA.Selenium.Chrome
@@ -53,7 +50,7 @@ namespace OpenQA.Selenium.Chrome
     ///     public void TearDown()
     ///     {
     ///         driver.Quit();
-    ///     } 
+    ///     }
     /// }
     /// </code>
     /// </example>
@@ -64,7 +61,6 @@ namespace OpenQA.Selenium.Chrome
         /// </summary>
         public static readonly bool AcceptUntrustedCertificates = true;
 
-        #region Constructors
         /// <summary>
         /// Initializes a new instance of the <see cref="ChromeDriver"/> class.
         /// </summary>
@@ -92,7 +88,7 @@ namespace OpenQA.Selenium.Chrome
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ChromeDriver"/> class using the specified path 
+        /// Initializes a new instance of the <see cref="ChromeDriver"/> class using the specified path
         /// to the directory containing ChromeDriver.exe.
         /// </summary>
         /// <param name="chromeDriverDirectory">The full path to the directory containing ChromeDriver.exe.</param>
@@ -125,7 +121,7 @@ namespace OpenQA.Selenium.Chrome
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ChromeDriver"/> class using the specified 
+        /// Initializes a new instance of the <see cref="ChromeDriver"/> class using the specified
         /// <see cref="ChromeDriverService"/> and options.
         /// </summary>
         /// <param name="service">The <see cref="ChromeDriverService"/> to use.</param>
@@ -142,25 +138,34 @@ namespace OpenQA.Selenium.Chrome
         /// <param name="options">The <see cref="ChromeOptions"/> to be used with the Chrome driver.</param>
         /// <param name="commandTimeout">The maximum amount of time to wait for each command.</param>
         public ChromeDriver(ChromeDriverService service, ChromeOptions options, TimeSpan commandTimeout)
-            : base(new DriverServiceCommandExecutor(service, commandTimeout), options.ToCapabilities())
+            : base(new DriverServiceCommandExecutor(service, commandTimeout), ConvertOptionsToCapabilities(options))
         {
         }
-        #endregion
 
         /// <summary>
-        /// Gets or sets the <see cref="IFileDetector"/> responsible for detecting 
-        /// sequences of keystrokes representing file paths and names. 
+        /// Gets or sets the <see cref="IFileDetector"/> responsible for detecting
+        /// sequences of keystrokes representing file paths and names.
         /// </summary>
         /// <remarks>The Chrome driver does not allow a file detector to be set,
-        /// as the server component of the Chrome driver (ChromeDriver.exe) only 
+        /// as the server component of the Chrome driver (ChromeDriver.exe) only
         /// allows uploads from the local computer environment. Attempting to set
-        /// this property has no effect, but does not throw an exception. If you 
+        /// this property has no effect, but does not throw an exception. If you
         /// are attempting to run the Chrome driver remotely, use <see cref="RemoteWebDriver"/>
         /// in conjunction with a standalone WebDriver server.</remarks>
         public override IFileDetector FileDetector
         {
             get { return base.FileDetector; }
             set { }
+        }
+
+        private static ICapabilities ConvertOptionsToCapabilities(ChromeOptions options)
+        {
+            if (options == null)
+            {
+                throw new ArgumentNullException("options", "options must not be null");
+            }
+
+            return options.ToCapabilities();
         }
     }
 }

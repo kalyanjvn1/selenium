@@ -44,6 +44,10 @@ limitations under the License.
 
     var frame, frameWin, frameDoc;
 
+    function setUpPage() {
+      goog.testing.TestCase.getActiveTestCase().promiseTimeout = 30000; // 30s
+    }
+
     function setUp() {
       frame = goog.dom.$('test-frame');
       frameWin = goog.dom.getFrameContentWindow(frame);
@@ -185,6 +189,15 @@ limitations under the License.
       assertTrue(goog.object.containsKey(wrapped[0], bot.inject.ELEMENT_KEY));
       assertEquals(document.body, bot.inject.cache.getElement(
           wrapped[0][bot.inject.ELEMENT_KEY]));
+    }
+
+
+    function testShouldThrowWhenWrappingRecursiveStructure() {
+      var obj1 = {};
+      var obj2 = {};
+      obj1['obj2'] = obj2;
+      obj2['obj1'] = obj1;
+      assertThrows(goog.partial(bot.inject.wrapValue, obj1));
     }
 
 

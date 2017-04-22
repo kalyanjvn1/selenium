@@ -22,7 +22,6 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -104,16 +103,10 @@ public class DefaultDriverProvider implements DriverProvider {
     } catch (NoSuchMethodException e) {
       try {
         return from.newInstance();
-      } catch (InstantiationException e1) {
-        throw new WebDriverException(e);
-      } catch (IllegalAccessException e1) {
+      } catch (ReflectiveOperationException e1) {
         throw new WebDriverException(e);
       }
-    } catch (InvocationTargetException e) {
-      throw new WebDriverException(e);
-    } catch (InstantiationException e) {
-      throw new WebDriverException(e);
-    } catch (IllegalAccessException e) {
+    } catch (ReflectiveOperationException e) {
       throw new WebDriverException(e);
     }
   }

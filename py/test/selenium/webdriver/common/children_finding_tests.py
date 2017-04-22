@@ -15,227 +15,169 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import unittest
-from selenium.common.exceptions import NoSuchElementException
-from selenium.common.exceptions import InvalidSelectorException
-from selenium.webdriver.common.by import By
+import pytest
 
-class ChildrenFindingTests(unittest.TestCase):
+from selenium.common.exceptions import (
+    WebDriverException,
+    NoSuchElementException)
 
-    def testShouldFindElementByXPath(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        child = element.find_element_by_xpath("select")
-        self.assertEqual(child.get_attribute("id"), "2")
 
-    def testShouldNotFindElementByXPath(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-            element.find_element_by_xpath("select/x")
-            self.fail("Expected NoSuchElementException to have been thrown")
-        except NoSuchElementException as e:
-            pass
-        except Exception as e:
-            self.fail("Expected NoSuchElementException to have been thrown but got " + str(e))
+def test_should_find_element_by_xpath(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    child = element.find_element_by_xpath("select")
+    assert child.get_attribute("id") == "2"
 
-    def testFindingDotSlashElementsOnElementByXPathShouldFindNotTopLevelElements(self):
-        self._loadSimplePage()
-        parent = self.driver.find_element_by_id("multiline")
-        children = parent.find_elements_by_xpath("./p")
-        self.assertEqual(1, len(children))
-        self.assertEqual("A div containing", children[0].text)
 
-    def testShouldFindElementsByXpath(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        children = element.find_elements_by_xpath("select/option")
-        self.assertEqual(len(children), 8);
-        self.assertEqual(children[0].text, "One")
-        self.assertEqual(children[1].text, "Two")
+def test_should_not_find_element_by_xpath(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    with pytest.raises(NoSuchElementException):
+        element.find_element_by_xpath("select/x")
 
-    def testShouldNotFindElementsByXpath(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        children = element.find_elements_by_xpath("select/x")
-        self.assertEqual(len(children), 0)
 
-    def testFindingElementsOnElementByXPathShouldFindTopLevelElements(self):
-        self._loadSimplePage()
-        parent = self.driver.find_element_by_id("multiline")
-        allParaElements = self.driver.find_elements_by_xpath("//p")
-        children = parent.find_elements_by_xpath("//p")
-        self.assertEqual(len(allParaElements), len(children))
+def test_finding_dot_slash_elements_on_element_by_xpath_should_find_not_top_level_elements(driver, pages):
+    pages.load("simpleTest.html")
+    parent = driver.find_element_by_id("multiline")
+    children = parent.find_elements_by_xpath("./p")
+    assert 1 == len(children)
+    assert "A div containing" == children[0].text
 
-    def testShouldFindElementByName(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        child = element.find_element_by_name("selectomatic")
-        self.assertEqual(child.get_attribute("id"), "2")
 
-    def testShouldFindElementsByName(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        children = element.find_elements_by_name("selectomatic")
-        self.assertEqual(len(children), 2)
+def test_should_find_elements_by_xpath(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    children = element.find_elements_by_xpath("select/option")
+    assert len(children) == 8
+    assert children[0].text == "One"
+    assert children[1].text == "Two"
 
-    def testShouldFindElementById(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        child = element.find_element_by_id("2")
-        self.assertEqual(child.get_attribute("name"), "selectomatic")
 
-    def testShouldFindElementsById(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        child = element.find_elements_by_id("2")
-        self.assertEqual(len(child), 2)
+def test_should_not_find_elements_by_xpath(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    children = element.find_elements_by_xpath("select/x")
+    assert len(children) == 0
 
-    def testShouldFindElementByIdWhenMultipleMatchesExist(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_id("test_id_div")
-        child = element.find_element_by_id("test_id")
-        self.assertEqual(child.text, "inside")
 
-    def testShouldFindElementByIdWhenNoMatchInContext(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_id("test_id_div")
-        try:
-            element.find_element_by_id("test_id_out")
-            self.Fail("Expected NoSuchElementException to have been thrown")
-        except NoSuchElementException as e:
-            pass
-        except Exception as e:
-            self.Fail("Expected NoSuchElementException to have been thrown but got " + str(e))
+def test_finding_elements_on_element_by_xpath_should_find_top_level_elements(driver, pages):
+    pages.load("simpleTest.html")
+    parent = driver.find_element_by_id("multiline")
+    all_para_elements = driver.find_elements_by_xpath("//p")
+    children = parent.find_elements_by_xpath("//p")
+    assert len(all_para_elements) == len(children)
 
-    def testShouldFindElementByLinkText(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("div1")
-        child = element.find_element_by_link_text("hello world")
-        self.assertEqual(child.get_attribute("name"), "link1")
 
-    def testShouldFindElementsByLinkText(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("div1")
-        children = element.find_elements_by_link_text("hello world")
-        self.assertEqual(len(children), 2)
-        self.assertEqual("link1", children[0].get_attribute("name"))
-        self.assertEqual("link2", children[1].get_attribute("name"))
+def test_should_find_element_by_name(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    child = element.find_element_by_name("selectomatic")
+    assert child.get_attribute("id") == "2"
 
-    def testShouldFindElementByClassName(self):
-        self._loadPage("nestedElements")
-        parent = self.driver.find_element_by_name("classes")
-        element = parent.find_element_by_class_name("one")
-        self.assertEqual("Find me", element.text)
 
-    def testShouldFindElementsByClassName(self):
-        self._loadPage("nestedElements")
-        parent = self.driver.find_element_by_name("classes")
-        elements = parent.find_elements_by_class_name("one")
-        self.assertEqual(2, len(elements))
+def test_should_find_elements_by_name(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    children = element.find_elements_by_name("selectomatic")
+    assert len(children) == 2
 
-    def testShouldFindElementByTagName(self):
-        self._loadPage("nestedElements")
-        parent = self.driver.find_element_by_name("div1")
-        element = parent.find_element_by_tag_name("a")
-        self.assertEqual("link1", element.get_attribute("name"))
 
-    def testShouldFindElementsByTagName(self):
-        self._loadPage("nestedElements")
-        parent = self.driver.find_element_by_name("div1")
-        elements = parent.find_elements_by_tag_name("a")
-        self.assertEqual(2, len(elements))
+def test_should_find_element_by_id(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    child = element.find_element_by_id("2")
+    assert child.get_attribute("name") == "selectomatic"
 
-    def testShouldBeAbleToFindAnElementByCssSelector(self):
-        self._loadPage("nestedElements")
-        parent = self.driver.find_element_by_name("form2")
-        element = parent.find_element_by_css_selector('*[name="selectomatic"]')
-        self.assertEqual("2", element.get_attribute("id"))
 
-    def testShouldBeAbleToFindMultipleElementsByCssSelector(self):
-        self._loadPage("nestedElements")
-        parent = self.driver.find_element_by_name("form2")
-        elements = parent.find_elements_by_css_selector(
-            '*[name="selectomatic"]')
-        self.assertEqual(2, len(elements))
+def test_should_find_elements_by_id(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    child = element.find_elements_by_id("2")
+    assert len(child) == 2
 
-    def testShouldThrowAnErrorIfUserPassesInInteger(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_element(By.ID, 333333)
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
 
-    def testShouldThrowAnErrorIfUserPassesInTuple(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_element((By.ID, 333333))
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
+def test_should_find_element_by_id_when_multiple_matches_exist(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_id("test_id_div")
+    child = element.find_element_by_id("test_id")
+    assert child.text == "inside"
 
-    def testShouldThrowAnErrorIfUserPassesInNone(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_element(By.ID, None)
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
 
-    def testShouldThrowAnErrorIfUserPassesInInvalidBy(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_element("css", "body")
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
+def test_should_find_element_by_id_when_no_match_in_context(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_id("test_id_div")
+    with pytest.raises(NoSuchElementException):
+        element.find_element_by_id("test_id_out")
 
-    def testShouldThrowAnErrorIfUserPassesInIntegerWhenFindElements(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_elements(By.ID, 333333)
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
 
-    def testShouldThrowAnErrorIfUserPassesInTupleWhenFindElements(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_elements((By.ID, 333333))
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
+def test_should_find_element_by_link_text(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("div1")
+    child = element.find_element_by_link_text("hello world")
+    assert child.get_attribute("name") == "link1"
 
-    def testShouldThrowAnErrorIfUserPassesInNoneWhenFindElements(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_elements(By.ID, None)
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
 
-    def testShouldThrowAnErrorIfUserPassesInInvalidByWhenFindElements(self):
-        self._loadPage("nestedElements")
-        element = self.driver.find_element_by_name("form2")
-        try:
-           element.find_elements("css", "body")
-           self.fail("Should have thrown WebDriver Exception")
-        except InvalidSelectorException:
-            pass #This is expected
+def test_should_find_elements_by_link_text(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("div1")
+    children = element.find_elements_by_link_text("hello world")
+    assert len(children) == 2
+    assert "link1" == children[0].get_attribute("name")
+    assert "link2" == children[1].get_attribute("name")
 
-    def _pageURL(self, name):
-        return self.webserver.where_is(name + '.html')
 
-    def _loadSimplePage(self):
-        self._loadPage("simpleTest")
+def test_should_find_element_by_class_name(driver, pages):
+    pages.load("nestedElements.html")
+    parent = driver.find_element_by_name("classes")
+    element = parent.find_element_by_class_name("one")
+    assert "Find me" == element.text
 
-    def _loadPage(self, name):
-        self.driver.get(self._pageURL(name))
+
+def test_should_find_elements_by_class_name(driver, pages):
+    pages.load("nestedElements.html")
+    parent = driver.find_element_by_name("classes")
+    elements = parent.find_elements_by_class_name("one")
+    assert 2 == len(elements)
+
+
+def test_should_find_element_by_tag_name(driver, pages):
+    pages.load("nestedElements.html")
+    parent = driver.find_element_by_name("div1")
+    element = parent.find_element_by_tag_name("a")
+    assert "link1" == element.get_attribute("name")
+
+
+def test_should_find_elements_by_tag_name(driver, pages):
+    pages.load("nestedElements.html")
+    parent = driver.find_element_by_name("div1")
+    elements = parent.find_elements_by_tag_name("a")
+    assert 2 == len(elements)
+
+
+def test_should_be_able_to_find_an_element_by_css_selector(driver, pages):
+    pages.load("nestedElements.html")
+    parent = driver.find_element_by_name("form2")
+    element = parent.find_element_by_css_selector('*[name="selectomatic"]')
+    assert "2" == element.get_attribute("id")
+
+
+def test_should_be_able_to_find_multiple_elements_by_css_selector(driver, pages):
+    pages.load("nestedElements.html")
+    parent = driver.find_element_by_name("form2")
+    elements = parent.find_elements_by_css_selector(
+        '*[name="selectomatic"]')
+    assert 2 == len(elements)
+
+
+def test_should_throw_an_error_if_user_passes_in_invalid_by(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    with pytest.raises(WebDriverException):
+        element.find_element("foo", "bar")
+
+
+def test_should_throw_an_error_if_user_passes_in_invalid_by_when_find_elements(driver, pages):
+    pages.load("nestedElements.html")
+    element = driver.find_element_by_name("form2")
+    with pytest.raises(WebDriverException):
+        element.find_elements("foo", "bar")

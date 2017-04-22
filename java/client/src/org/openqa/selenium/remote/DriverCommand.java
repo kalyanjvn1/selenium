@@ -40,6 +40,7 @@ public interface DriverCommand {
 
   String ADD_COOKIE = "addCookie";
   String GET_ALL_COOKIES = "getCookies";
+  String GET_COOKIE = "getCookie";
   String DELETE_COOKIE = "deleteCookie";
   String DELETE_ALL_COOKIES = "deleteAllCookies";
 
@@ -79,10 +80,12 @@ public interface DriverCommand {
   String IS_ELEMENT_SELECTED = "isElementSelected";
   String IS_ELEMENT_ENABLED = "isElementEnabled";
   String IS_ELEMENT_DISPLAYED = "isElementDisplayed";
+  String GET_ELEMENT_RECT = "getElementRect";
   String GET_ELEMENT_LOCATION = "getElementLocation";
   String GET_ELEMENT_LOCATION_ONCE_SCROLLED_INTO_VIEW = "getElementLocationOnceScrolledIntoView";
   String GET_ELEMENT_SIZE = "getElementSize";
   String GET_ELEMENT_ATTRIBUTE = "getElementAttribute";
+  String GET_ELEMENT_PROPERTY = "getElementProperty";
   String GET_ELEMENT_VALUE_OF_CSS_PROPERTY = "getElementValueOfCssProperty";
   String ELEMENT_EQUALS = "elementEquals";
 
@@ -123,8 +126,12 @@ public interface DriverCommand {
 
   String SET_SCREEN_ORIENTATION = "setScreenOrientation";
   String GET_SCREEN_ORIENTATION = "getScreenOrientation";
+  String SET_SCREEN_ROTATION = "setScreenRotation";
+  String GET_SCREEN_ROTATION = "getScreenRotation";
 
-  String ACTION_CHAIN = "actionChain";
+  // W3C Actions APIs
+  String ACTIONS = "actions";
+  String CLEAR_ACTIONS_STATE = "clearActionState";
 
   // These belong to the Advanced user interactions - an element is
   // optional for these commands.
@@ -152,12 +159,15 @@ public interface DriverCommand {
   String TOUCH_LONG_PRESS = "touchLongPress";
   String TOUCH_FLICK = "touchFlick";
 
-  // Window API (beta)
-  String SET_WINDOW_SIZE = "setWindowSize";
-  String SET_WINDOW_POSITION = "setWindowPosition";
-  String GET_WINDOW_SIZE = "getWindowSize";
-  String GET_WINDOW_POSITION = "getWindowPosition";
-  String MAXIMIZE_WINDOW = "maximizeWindow";
+  // Window API
+  String SET_CURRENT_WINDOW_POSITION = "setWindowPosition";
+  String GET_CURRENT_WINDOW_POSITION = "getWindowPosition";
+
+  // W3C compatible Window API
+  String SET_CURRENT_WINDOW_SIZE = "setCurrentWindowSize";
+  String GET_CURRENT_WINDOW_SIZE = "getCurrentWindowSize";
+  String MAXIMIZE_CURRENT_WINDOW = "maximizeCurrentWindow";
+  String FULLSCREEN_CURRENT_WINDOW = "fullscreenCurrentWindow";
 
   // Logging API
   String GET_AVAILABLE_LOG_TYPES = "getAvailableLogTypes";

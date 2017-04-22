@@ -17,44 +17,42 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require File.expand_path("../spec_helper", __FILE__)
+require_relative 'spec_helper'
 
 module Selenium
   module WebDriver
     describe Error do
-
-      context "backwards compatibility" do
-        it "aliases StaleElementReferenceError as ObsoleteElementError" do
-          lambda {
+      context 'backwards compatibility' do
+        it 'aliases StaleElementReferenceError as ObsoleteElementError' do
+          expect do
             raise Error::StaleElementReferenceError
-          }.should raise_error(Error::ObsoleteElementError)
+          end.to raise_error(Error::ObsoleteElementError)
         end
 
-        it "aliases UnknownError as UnhandledError" do
-          lambda {
+        it 'aliases UnknownError as UnhandledError' do
+          expect do
             raise Error::UnknownError
-          }.should raise_error(Error::UnhandledError)
+          end.to raise_error(Error::UnhandledError)
         end
 
-        it "aliases JavascriptError as UnexpectedJavascriptError" do
-          lambda {
+        it 'aliases JavascriptError as UnexpectedJavascriptError' do
+          expect do
             raise Error::JavascriptError
-          }.should raise_error(Error::UnexpectedJavascriptError)
+          end.to raise_error(Error::UnexpectedJavascriptError)
         end
 
-        it "aliases NoAlertPresentError as NoAlertOpenError" do
-          lambda {
+        it 'aliases NoAlertPresentError as NoAlertOpenError' do
+          expect do
             raise Error::NoAlertPresentError
-          }.should raise_error(Error::NoAlertOpenError)
+          end.to raise_error(Error::NoAlertOpenError)
         end
 
-        it "aliases ElementNotVisibleError as ElementNotDisplayedError" do
-          lambda {
+        it 'aliases ElementNotVisibleError as ElementNotDisplayedError' do
+          expect do
             raise Error::ElementNotVisibleError
-          }.should raise_error(Error::ElementNotDisplayedError)
+          end.to raise_error(Error::ElementNotDisplayedError)
         end
       end
-
     end
-  end
-end
+  end # WebDriver
+end # Selenium

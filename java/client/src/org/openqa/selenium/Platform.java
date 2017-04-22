@@ -72,6 +72,13 @@ public enum Platform {
     }
   },
 
+  WIN10("windows 10", "win10") {
+    @Override
+    public Platform family() {
+      return WINDOWS;
+    }
+  },
+
   MAC("mac", "darwin", "os x") {},
 
   SNOW_LEOPARD("snow leopard", "os x 10.6") {
@@ -117,6 +124,28 @@ public enum Platform {
       return "OS X 10.10";
     }
   },
+  
+  EL_CAPITAN("el capitan", "os x 10.11") {
+    @Override
+    public Platform family() {
+      return MAC;
+    }
+    @Override
+    public String toString() {
+      return "OS X 10.11";
+    }
+  },
+
+  SIERRA("sierra", "macos 10.12") {
+    @Override
+    public Platform family() {
+      return MAC;
+    }
+    @Override
+    public String toString() {
+      return "macOS 10.12";
+    }
+  },
 
   /**
    * Many platforms have UNIX traits, amongst them LINUX, Solaris and BSD.
@@ -131,10 +160,6 @@ public enum Platform {
   },
 
   ANDROID("android", "dalvik") {
-    public String getLineEnding() {
-      return "\n";
-    }
-
     @Override
     public Platform family() {
       return LINUX;
@@ -152,34 +177,18 @@ public enum Platform {
   };
 
   private final String[] partOfOsName;
-  private final int minorVersion;
-  private final int majorVersion;
+  private int minorVersion = 0;
+  private int majorVersion = 0;
 
   private Platform(String... partOfOsName) {
     this.partOfOsName = partOfOsName;
-
-    String version = System.getProperty("os.version", "0.0.0");
-    int major = 0;
-    int min = 0;
-
-    Pattern pattern = Pattern.compile("^(\\d+)\\.(\\d+).*");
-    Matcher matcher = pattern.matcher(version);
-    if (matcher.matches()) {
-      try {
-        major = Integer.parseInt(matcher.group(1));
-        min = Integer.parseInt(matcher.group(2));
-      } catch (NumberFormatException e) {
-        // These things happen
-      }
-    }
-
-    majorVersion = major;
-    minorVersion = min;
   }
 
   public String[] getPartOfOsName() {
     return partOfOsName;
   }
+
+  private static Platform current;
 
   /**
    * Get current platform (not necessarily the same as operating system).
@@ -187,7 +196,28 @@ public enum Platform {
    * @return current platform
    */
   public static Platform getCurrent() {
-    return extractFromSysProperty(System.getProperty("os.name"));
+    if (current == null) {
+      current = extractFromSysProperty(System.getProperty("os.name"));
+
+      String version = System.getProperty("os.version", "0.0.0");
+      int major = 0;
+      int min = 0;
+
+      Pattern pattern = Pattern.compile("^(\\d+)\\.(\\d+).*");
+      Matcher matcher = pattern.matcher(version);
+      if (matcher.matches()) {
+        try {
+          major = Integer.parseInt(matcher.group(1));
+          min = Integer.parseInt(matcher.group(2));
+        } catch (NumberFormatException e) {
+          // These things happen
+        }
+      }
+
+      current.majorVersion = major;
+      current.minorVersion = min;
+    }
+    return current;
   }
 
   /**

@@ -19,10 +19,10 @@ package org.openqa.grid.web.utils;
 
 import com.google.common.collect.Maps;
 
-import org.openqa.grid.common.RegistrationRequest;
 import org.openqa.grid.internal.Registry;
 import org.openqa.selenium.Platform;
 import org.openqa.selenium.remote.BrowserType;
+import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
 import java.io.InputStream;
@@ -33,27 +33,19 @@ import java.util.Map;
  */
 public class BrowserNameUtils {
 
-  public static String lookupGrid1Environment(String browserString, Registry registry) {
-    String translatedBrowserString =
-        registry.getConfiguration().getGrid1Mapping().get(browserString);
-
-    return (translatedBrowserString == null) ? browserString : translatedBrowserString;
-  }
-
-
   public static Map<String, Object> parseGrid2Environment(String environment) {
     Map<String, Object> ret = Maps.newHashMap();
 
     String[] details = environment.split(" ");
     if (details.length == 1) {
       // simple browser string
-      ret.put(RegistrationRequest.BROWSER, details[0]);
+      ret.put(CapabilityType.BROWSER_NAME, details[0]);
     } else {
       // more complex. Only case handled so far = X on Y
       // where X is the browser string, Y the OS
-      ret.put(RegistrationRequest.BROWSER, details[0]);
+      ret.put(CapabilityType.BROWSER_NAME, details[0]);
       if (details.length == 3) {
-        ret.put(RegistrationRequest.PLATFORM, Platform.extractFromSysProperty(details[2]));
+        ret.put(CapabilityType.PLATFORM, Platform.extractFromSysProperty(details[2]));
       }
     }
 
@@ -67,11 +59,6 @@ public class BrowserNameUtils {
     }
 
     String ret = browserString;
-
-    // Take care of any Grid 1.0 named environment translation.
-    if (browserString.charAt(0) != '*') {
-      browserString = lookupGrid1Environment(browserString, registry);
-    }
 
     // Map browser environments to icon names.
     if (browserString.contains("iexplore") || browserString.startsWith("*iehta")) {
@@ -96,6 +83,8 @@ public class BrowserNameUtils {
       ret = BrowserType.CHROME;
     } else if (browserString.startsWith("opera")) {
       ret = BrowserType.OPERA;
+    } else if (browserString.toLowerCase().contains("edge")) {
+      ret = BrowserType.EDGE;
     }
 
     return ret.replace(" ", "_");
@@ -106,8 +95,8 @@ public class BrowserNameUtils {
    * get the icon representing the browser for the grid. If the icon cannot be located, returns
    * null.
    *
-   * @param cap
-   * @param registry
+   * @param cap - Capability
+   * @param registry - Registry
    * @return String with path to icon image file.  Can be <i>null</i> if no icon
    *         file if available.
    */
@@ -119,10 +108,8 @@ public class BrowserNameUtils {
             .getResourceAsStream(path + name + ".png");
     if (in == null) {
       return null;
-    } else {
-      return "/grid/resources/" + path + name + ".png";
     }
-
+    return "/grid/resources/" + path + name + ".png";
   }
 
 }

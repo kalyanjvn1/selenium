@@ -9,6 +9,288 @@ available via the project downloads page. Changes in "revision" field indicate
 private releases checked into the prebuilts directory of the source tree, but
 not made generally available on the downloads page.
 
+v3.4.0.0
+========
+ * Release to synchronize with release of Selenium project.
+
+v3.3.0.3
+========
+ * The IE file upload dialog may not be a direct child of the IE window.
+   This has become very clear in testing the previous rewrite of the file
+   upload dialog handling code. This version fixes that problem, and should
+   now correctly find the dialog, even if it isn't directly a child of the
+   top-level IE frame window.
+
+v3.3.0.2
+========
+ * Updates to JavaScript automation atoms.
+ * Rewriting file upload dialog handling code. Previously, the IE driver
+   would use simple window handling and Windows APIs to find and manipulate
+   the IE file selection dialog for the file upload case. With this change,
+   the driver now uses the Windows UI Automation library that ships as part
+   of the Windows operating system to detect and manipulate the dialog.
+   Unfortunately, since handling native dialogs this way is highly OS-
+   dependent, there may be changes in behavior based on different versions
+   of Windows, or different versions of IE. At the moment, this change
+   has been tested against Windows 10, and IE 11. Other versions may not
+   work exactly the same. Temporarily, to retain backward compatibility,
+   it's possible to use the legacy handling with the file upload dialog
+   box. This can be set by setting a capability of
+   "ie.useLegacyFileUploadDialogHandling" to true. This capability is only
+   intended to be provided temporarily, and will be removed as soon as is
+   practical. As such, the capability is not documented, and its presence
+   should not be relied on over the long term. It should be pointed out
+   that, as has been the case since July 2016, the driver now only supports
+   IE versions 9, 10, and 11, and only supports Windows Vista and above.
+
+v3.3.0.1
+========
+ * Updates to JavaScript automation atoms.
+ * Implementing IE driver custom capabilities in sub-object. As of this 
+   version, all IE-only capabilities should be put in a JSON object and
+   that object assigned to a property named "se:ieOptions" in the
+   capabilities object passed to the driver when starting a new session.
+   The only top-level capabilities that the driver will now recognize are
+   "browserName", "unexpectedAlertBehaviour", "pageLoadStrategy", and
+   "proxy". As has always been the case, with the IE driver unknown
+   capability names will be ignored. For the moment, this change is backward
+   compatible with language bindings that do not use the new capability
+   format, but this will change in the future, and IE-only capabilities that
+   are set at the top level of the capabilities object (i.e., not in a
+   sub-object that is the value of a property named "se:ieOptions") will
+   eventually be ignored.
+
+v3.3.0.0
+========
+ * Release to synchronize with release of Selenium project.
+
+v3.2.0.0
+========
+ * Release to synchronize with release of Selenium project.
+
+v3.1.0.1
+========
+ * Code reorganization and cleanup, mostly reorganizing header files.
+ * Removing support for the Microsoft IE driver implementation. This
+   implementation has been entirely abandoned by Microsoft, and is
+   unlikely to ever receive more attention.
+
+v3.1.0.0
+========
+ * Release to synchronize with release of Selenium project.
+ * Updates to JavaScript automation atoms.
+
+v3.0.0.0
+========
+ * Release to synchronize with release of Selenium project.
+
+v2.53.1.1
+=========
+ * Updates to JavaScript automation atoms.
+ * Fall back to using browser instead of document to get current URL. To 
+   maintain compatibility with other WebDriver implementations, the IE
+   driver uses the IHTMLDocument2 interface to get the current URL, so
+   that the proper URL is returned even when an embedded frame has the
+   focus. However, when browsing a non-HTML document (like a PDF), the
+   driver cannot get an IHTMLDocument2. In that case, fall back to the
+   IWebBrowser2 interface.
+
+v2.53.1.0
+=========
+ * Updates to JavaScript automation atoms, including update to wgxpath.
+ * IE driver no longer returns proxy capability unless a proxy is requested.
+
+v2.53.0.1
+=========
+ * Modified wait algorithm to respect page load strategy for 
+   IWebBrowser2::ReadyState. Prior to this commit, the driver would only
+   respect the page load strategy for document.readyState, not for the
+   browser COM object. This means that, for example, when IE has an info
+   bar being displayed (like when downloading a file), the driver will wait
+   indefinitely, since the IWebBrowser2 object's ReadyState property will
+   never cycle over to "complete," topping out at "interactive." Fixes issues
+   #999 and #1843.
+
+v2.53.0.0
+=========
+ * Release to synchronize with release of Selenium project.
+ * (on behalf of Nathan Isom) Fixed spelling in IE driver registry path 
+   for use in error messages.
+
+v2.52.2.0
+=========
+ * Updated IE driver to not error on findElements JavaScript atom errors.
+   Hitting a JavaScript error with the atom is an unrecoverable error. The
+   most common case of this for IE is when there is a page refresh,
+   navigation, or similar, and the driver is polling for element presence.
+   The calling code can't do anything about it, so we might as well just log
+   and return success with an empty list. This was fixed in 2.52.1 for the
+   "find single element" case, but was not completely fixed for the "find
+   multiple elements" case. As before, this is an extreme hack, and has the
+   potential to be masking a very serious problem in the driver.
+
+v2.52.1.1
+=========
+ * Updated JavaScript automation atoms.
+ * Added logging of found dialog window handle for file upload dialog.
+
+v2.52.1.0
+=========
+ * Updated JavaScript automation atoms, including update to wgxpath library.
+ * Updated IE driver to return NoSuchElement on JavaScript atom errors.
+   Hitting a JavaScript error with the atom is an unrecoverable error. The
+   most common case of this for IE is when there is a page refresh,
+   navigation, or similar, and the driver is polling for element presence.
+   The calling code can't do anything about it, so we might as well just log
+   and return "no such element" error code. In the common case, this means
+   that the error will be transitory, and will sort itself out once the DOM
+   returns to normal after the page transition is completed. Note carefully
+   that this is an extreme hack, and has the potential to be masking a very
+   serious problem in the driver.
+ * Bumped IE default file upload dialog timoeut to 3000ms.
+ 
+v2.52.0.1
+=========
+ * Removing IE driver support for ie.validateCookieDocumentType capability.
+   This capability was made obsolete with the rewrite of the IE driver's
+   cookie handling in 2.47. It has been ignored since, so this commit removes
+   the IE driver code for that capability.
+ * Make IE driver directly return capabilities from new session command.
+   Previously, the driver would return a redirect HTTP response (303), and
+   the language bindings were expected to follow the redirect to get the
+   returned capabilities. This has been an obsolete pattern for some time,
+   and the IE driver is only now conforming to the proper pattern of simply
+   returning a 200 response with the correct capabilities as part of the
+   body.
+ * Updating logic for uploading files in IE. Updating the IE driver's handling
+   of sendKeys to have extra logging around finding the file open dialog. Also
+   rearranged the search for the dialog to more properly find the dialog using
+   the most common method first.
+
+v2.52.0.0
+=========
+ * Release to synchronize with release of Selenium project.
+ * Updates to JavaScript automation atoms.
+ * (on behalf of Anton Usmansky) Added ie.enableFullPageScreenshot capability
+   to allow users to create screenshots of only the current view port. The
+   capability defaults to true, which preserves the original behavior of 
+   resizing the browser window and taking a screenshot of the full page.
+
+v2.51.0.0
+=========
+ * Release to synchronize with release of Selenium project.
+ * Updates to JavaScript automation atoms.
+
+v2.50.0.0
+=========
+ * Release to synchronize with release of Selenium project.
+ * Updates to JavaScript automation atoms.
+
+v2.49.0.2
+=========
+ * Fixed finding elements where native CSS selector engine cannot be found.
+
+v2.49.0.1
+=========
+ * Updates to JavaScript automation atoms.
+ * Changes to simplify the execution of finding elements. The driver now
+   delegates more of the error handling of finding elements to the JavaScript
+   automation atoms. This has the effect of simplifying the code within the
+   driver, and synchronizes the error-case behavior with other implementations.
+
+v2.49.0.0
+=========
+ * Release to synchronize with release of Selenium project.
+
+v2.48.0.5
+=========
+ * Refactoring of IE driver native events interaction code. This commit
+   removes the dependency on shared native event code with Firefox.
+   Since Firefox no longer supports native events, it makes no sense to
+   have common code refactored for only one consumer, so this commit
+   moves the Windows-only SendMessage code directly into the IE driver.
+   This is a first step toward deleting the webdriver-interactions
+   directory. While extreme care has been taken to ensure this
+   refactoring causes no regressions, there is a chance something will
+   still break. This particular refactor should also be treated as an
+   intermediate step, as the ported code contains some redundancies to
+   what is already present in the driver. Future refactoring will take
+   place to remove the redundancies and better integrate the code.
+
+v2.48.0.4
+=========
+ * Added ability to set whitelisted IP addresses to access IE driver server.
+   The list of IP addresses is a comma-delimited list passed to the
+   /whitelisted-ips command-line argument. Defaults to local loopback address
+   only. Also improved logging to show executable version and architecture in
+   driver log. Patch provided by lsowen.
+
+v2.48.0.3
+=========
+ * Updates to JavaScript automation atoms.
+ * Modifications to file upload functionality. Added additional logging
+   to help diagnose issues where the file selection dialog is not closed
+   by the driver. Also added a new capability, ie.fileUploadDialogTimeout
+   to allow users to customize the amount of time the driver waits for
+   the file selection dialog before giving up. It defaults to one second.
+   Finally, the driver now checks that the file exists before sending the
+   file name to the file selection dialog. If the file does not exist,
+   the sendKeys method will throw an exception explicitly stating that
+   the file does not exist.
+
+v2.48.0.2
+=========
+ * Updates to JavaScript automation atoms.
+ * Includes fix for clearing input elements with type "number".
+
+v2.48.0.1
+=========
+ * Updating to return top-level URL when focused on a frame. This makes the
+   driver now consistent with other implementations.
+
+v2.48.0.0
+=========
+ * Release to synchronize with release of Selenium project.
+
+v2.47.0.5
+=========
+ * Updating screenshot code to retain scroll bars in required directions.
+   When an IE window needs to be resized to obtain the full-DOM screenshot,
+   if it has scroll bars in either direction, those scroll bars need to be
+   present in the resized window, so that layout recalculation doesn't occur.
+   In practice, this means reducing the window size by 2 pixels in the
+   appropriate direction before taking the screenshot. The resulting scroll
+   bars are cropped from the image.
+
+v2.47.0.4
+=========
+ * Updates to JavaScript automation atoms.
+ * Updating screenshot code to prevent resizing if window is large enough.
+   In the previous screenshot update, the driver would incorrectly resize
+   the IE window smaller if the document was smaller in height or width
+   than the current window size. This could cause redraws of the page
+   being viewed such that after resizing, the screenshot still did not
+   display the entire page. This commit resolves that issue, and also takes
+   into account the size of the scroll bars when creating the screenshot
+   image. NOTE: There is a *very* slight chance that resizing the window
+   so there are no longer scroll bars to be displayed *might* still cause
+   layout redraws such that the screenshot does not show the entire DOM
+   after the resize. Since we should now always be expanding the window size,
+   never contracting it, this is a corner case that explicitly will *not* be
+   fixed. Any issue reports describing this corner case will be closed without
+   action. Fixes issue #1085.
+
+v2.47.0.3
+=========
+ * Updates to JavaScript automation atoms.
+ * Removed use of Windows hooks for taking screenshots in IE. This will fix
+   the issue of taking full-page screenshots when using the 32-bit IE driver
+   on 64-bit Windows installations.
+
+v2.47.0.2
+=========
+ * Corrected build process to create executables runnable on Windows XP.
+
 v2.47.0.1
 =========
  * Added logging messages for IE driver for bitness mismatches. This commit

@@ -18,11 +18,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
-using System.IO;
-using System.Text;
-using Newtonsoft.Json;
 using OpenQA.Selenium.Remote;
 
 namespace OpenQA.Selenium.Edge
@@ -73,7 +69,7 @@ namespace OpenQA.Selenium.Edge
     /// RemoteWebDriver driver = new RemoteWebDriver(new Uri("http://localhost:4444/wd/hub"), options.ToCapabilities());
     /// </code>
     /// </example>
-    public class EdgeOptions
+    public class EdgeOptions : DriverOptions
     {
         private EdgePageLoadStrategy pageLoadStrategy = EdgePageLoadStrategy.Default;
         private Dictionary<string, object> additionalCapabilities = new Dictionary<string, object>();
@@ -88,20 +84,19 @@ namespace OpenQA.Selenium.Edge
             set { this.pageLoadStrategy = value; }
         }
 
-
         /// <summary>
-        /// Provides a means to add additional capabilities not yet added as type safe options 
+        /// Provides a means to add additional capabilities not yet added as type safe options
         /// for the Edge driver.
         /// </summary>
         /// <param name="capabilityName">The name of the capability to add.</param>
         /// <param name="capabilityValue">The value of the capability to add.</param>
         /// <exception cref="ArgumentException">
-        /// thrown when attempting to add a capability for which there is already a type safe option, or 
+        /// thrown when attempting to add a capability for which there is already a type safe option, or
         /// when <paramref name="capabilityName"/> is <see langword="null"/> or the empty string.
         /// </exception>
         /// <remarks>Calling <see cref="AddAdditionalCapability"/> where <paramref name="capabilityName"/>
         /// has already been added will overwrite the existing value with the new value in <paramref name="capabilityValue"/></remarks>
-        public void AddAdditionalCapability(string capabilityName, object capabilityValue)
+        public override void AddAdditionalCapability(string capabilityName, object capabilityValue)
         {
             if (capabilityName == CapabilityType.PageLoadStrategy)
             {
@@ -123,7 +118,7 @@ namespace OpenQA.Selenium.Edge
         /// reflected in the returned capabilities.
         /// </summary>
         /// <returns>The DesiredCapabilities for Edge with these options.</returns>
-        public ICapabilities ToCapabilities()
+        public override ICapabilities ToCapabilities()
         {
             DesiredCapabilities capabilities = DesiredCapabilities.Edge();
             if (this.pageLoadStrategy != EdgePageLoadStrategy.Default)

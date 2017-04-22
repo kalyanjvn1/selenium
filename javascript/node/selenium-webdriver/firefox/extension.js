@@ -19,35 +19,25 @@
 
 'use strict';
 
-var AdmZip = require('adm-zip'),
+const AdmZip = require('adm-zip'),
     fs = require('fs'),
     path = require('path'),
-    util = require('util'),
     xml = require('xml2js');
 
-var promise = require('..').promise,
-    checkedCall = promise.checkedNodeCall,
-    io = require('../io');
+const io = require('../io');
 
 
 /**
  * Thrown when there an add-on is malformed.
- * @param {string} msg The error message.
- * @constructor
- * @extends {Error}
  */
-function AddonFormatError(msg) {
-  Error.call(this);
-
-  Error.captureStackTrace(this, AddonFormatError);
-
-  /** @override */
-  this.name = AddonFormatError.name;
-
-  /** @override */
-  this.message = msg;
+class AddonFormatError extends Error {
+  /** @param {string} msg The error message. */
+  constructor(msg) {
+    super(msg);
+    /** @override */
+    this.name = this.constructor.name;
+  }
 }
-util.inherits(AddonFormatError, Error);
 
 
 
@@ -56,26 +46,24 @@ util.inherits(AddonFormatError, Error);
  * @param {string} extension Path to the extension to install, as either a xpi
  *     file or a directory.
  * @param {string} dir Path to the directory to install the extension in.
- * @return {!promise.Promise.<string>} A promise for the add-on ID once
+ * @return {!Promise<string>} A promise for the add-on ID once
  *     installed.
  */
 function install(extension, dir) {
   return getDetails(extension).then(function(details) {
-    function returnId() { return details.id; }
-
     var dst = path.join(dir, details.id);
     if (extension.slice(-4) === '.xpi') {
       if (!details.unpack) {
-        return io.copy(extension, dst + '.xpi').then(returnId);
+        return io.copy(extension, dst + '.xpi').then(() => details.id);
       } else {
-        return checkedCall(fs.readFile, extension).then(function(buff) {
-          var zip = new AdmZip(buff);
+        return Promise.resolve().then(function() {
           // TODO: find an async library for inflating a zip archive.
-          new AdmZip(buff).extractAllTo(dst, true);
-        }).then(returnId);
+          new AdmZip(extension).extractAllTo(dst, true);
+          return details.id;
+        });
       }
     } else {
-      return io.copyDir(extension, dst).then(returnId);
+      return io.copyDir(extension, dst).then(() => details.id);
     }
   });
 }
@@ -87,11 +75,15 @@ function install(extension, dir) {
  */
 var AddonDetails;
 
+/** @typedef {{$: !Object<string, string>}} */
+var RdfRoot;
+
+
 
 /**
  * Extracts the details needed to install an add-on.
  * @param {string} addonPath Path to the extension directory.
- * @return {!promise.Promise.<!AddonDetails>} A promise for the add-on details.
+ * @return {!Promise<!AddonDetails>} A promise for the add-on details.
  */
 function getDetails(addonPath) {
   return readManifest(addonPath).then(function(doc) {
@@ -128,7 +120,7 @@ function getDetails(addonPath) {
       throw new AddonFormatError('Malformed manifest for add-on ' + addonPath);
     }
 
-    var namespaces = doc[keys[0]].$;
+    var namespaces = /** @type {!RdfRoot} */(doc[keys[0]]).$;
     var id = '';
     Object.keys(namespaces).some(function(ns) {
       if (namespaces[ns] !== url) {
@@ -148,34 +140,43 @@ function getDetails(addonPath) {
 /**
  * Reads the manifest for a Firefox add-on.
  * @param {string} addonPath Path to a Firefox add-on as a xpi or an extension.
- * @return {!promise.Promise.<!Object>} A promise for the parsed manifest.
+ * @return {!Promise<!Object>} A promise for the parsed manifest.
  */
 function readManifest(addonPath) {
   var manifest;
 
   if (addonPath.slice(-4) === '.xpi') {
-    manifest = checkedCall(fs.readFile, addonPath).then(function(buff) {
-      var zip = new AdmZip(buff);
+    manifest = new Promise((resolve, reject) => {
+      let zip = new AdmZip(addonPath);
+
       if (!zip.getEntry('install.rdf')) {
-        throw new AddonFormatError(
-            'Could not find install.rdf in ' + addonPath);
+        reject(new AddonFormatError(
+            'Could not find install.rdf in ' + addonPath));
+        return;
       }
-      var done = promise.defer();
-      zip.readAsTextAsync('install.rdf', done.fulfill);
-      return done.promise;
+
+      zip.readAsTextAsync('install.rdf', resolve);
     });
   } else {
-    manifest = checkedCall(fs.stat, addonPath).then(function(stats) {
+    manifest = io.stat(addonPath).then(function(stats) {
       if (!stats.isDirectory()) {
         throw Error(
-            'Add-on path is niether a xpi nor a directory: ' + addonPath);
+            'Add-on path is neither a xpi nor a directory: ' + addonPath);
       }
-      return checkedCall(fs.readFile, path.join(addonPath, 'install.rdf'));
+      return io.read(path.join(addonPath, 'install.rdf'));
     });
   }
 
   return manifest.then(function(content) {
-    return checkedCall(xml.parseString, content);
+    return new Promise((resolve, reject) => {
+      xml.parseString(content, (err, data) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(data);
+        }
+      });
+    });
   });
 }
 

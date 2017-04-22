@@ -79,6 +79,7 @@ namespace OpenQA.Selenium
         public string dragDropOverflowPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("dragDropOverflow.html");
         public string missedJsReferencePage = EnvironmentManager.Instance.UrlBuilder.WhereIs("missedJsReference.html");
         public string authenticationPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("basicAuth");
+        public string html5Page = EnvironmentManager.Instance.UrlBuilder.WhereIs("html5Page.html");
 
         protected IWebDriver driver;
 
@@ -102,13 +103,13 @@ namespace OpenQA.Selenium
             }
         }
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void SetUp()
         {
             driver = EnvironmentManager.Instance.GetCurrentDriver();
         }
 
-        [TestFixtureTearDown]
+        [OneTimeTearDown]
         public void TearDown()
         {
             // EnvironmentManager.Instance.CloseCurrentDriver();
@@ -128,17 +129,17 @@ namespace OpenQA.Selenium
             return e.GetType().Name.Contains("TimedOutException");
         }
 
-        protected bool WaitFor(Func<bool> waitFunction)
+        protected bool WaitFor(Func<bool> waitFunction, string timeoutMessage)
         {
-            return WaitFor<bool>(waitFunction);
+            return WaitFor<bool>(waitFunction, timeoutMessage);
         }
 
-        protected T WaitFor<T>(Func<T> waitFunction)
+        protected T WaitFor<T>(Func<T> waitFunction, string timeoutMessage)
         {
-            return this.WaitFor<T>(waitFunction, TimeSpan.FromSeconds(5));
+            return this.WaitFor<T>(waitFunction, TimeSpan.FromSeconds(5), timeoutMessage);
         }
 
-        protected T WaitFor<T>(Func<T> waitFunction, TimeSpan timeout)
+        protected T WaitFor<T>(Func<T> waitFunction, TimeSpan timeout, string timeoutMessage)
         {
             DateTime endTime = DateTime.Now.Add(timeout);
             T value = default(T);
@@ -174,7 +175,7 @@ namespace OpenQA.Selenium
                 throw new WebDriverException("Operation timed out", lastException);
             }
 
-            Assert.Fail("Condition timed out: " + waitFunction);
+            Assert.Fail("Condition timed out: " + timeoutMessage);
             return default(T);
         }
     }

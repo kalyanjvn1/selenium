@@ -17,7 +17,6 @@
 // </copyright>
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -33,12 +32,9 @@ namespace OpenQA.Selenium.Firefox.Internal
     /// </summary>
     internal class Executable
     {
-        #region Private members
         private readonly string binaryInDefaultLocationForPlatform;
         private string binaryLocation;
-        #endregion
 
-        #region Constructor
         /// <summary>
         /// Initializes a new instance of the <see cref="Executable"/> class.
         /// </summary>
@@ -62,7 +58,7 @@ namespace OpenQA.Selenium.Firefox.Internal
             {
                 this.binaryInDefaultLocationForPlatform = LocateFirefoxBinaryFromPlatform();
             }
-            
+
             if (this.binaryInDefaultLocationForPlatform != null && File.Exists(this.binaryInDefaultLocationForPlatform))
             {
                 this.binaryLocation = this.binaryInDefaultLocationForPlatform;
@@ -72,19 +68,15 @@ namespace OpenQA.Selenium.Firefox.Internal
             throw new WebDriverException("Cannot find Firefox binary in PATH or default install locations. " +
                 "Make sure Firefox is installed. OS appears to be: " + Platform.CurrentPlatform.ToString());
         }
-        #endregion
 
-        #region Properites
         /// <summary>
         /// Gets the full path to the executable.
         /// </summary>
         public string ExecutablePath
         {
             get { return this.binaryLocation; }
-        } 
-        #endregion
+        }
 
-        #region Methods
         /// <summary>
         /// Sets the library path for the Firefox executable environment.
         /// </summary>
@@ -109,7 +101,7 @@ namespace OpenQA.Selenium.Firefox.Internal
             }
 
             // Last, add the contents of the specified system property, defaulting to the binary's path.
-            // On Snow Leopard, beware of problems the sqlite library    
+            // On Snow Leopard, beware of problems the sqlite library
             string firefoxLibraryPath = Path.GetFullPath(this.binaryLocation);
             if (Platform.CurrentPlatform.IsPlatformType(PlatformType.Mac) && Platform.CurrentPlatform.MinorVersion > 5)
             {
@@ -131,10 +123,8 @@ namespace OpenQA.Selenium.Firefox.Internal
             {
                 builder.StartInfo.EnvironmentVariables.Add(propertyName, libraryPath.ToString());
             }
-        } 
-        #endregion
+        }
 
-        #region Support methods
         /// <summary>
         /// Locates the Firefox binary by platform.
         /// </summary>
@@ -309,7 +299,6 @@ namespace OpenQA.Selenium.Firefox.Internal
             }
 
             return null;
-        } 
-        #endregion
+        }
     }
 }

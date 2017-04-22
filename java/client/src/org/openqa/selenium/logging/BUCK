@@ -10,7 +10,10 @@ java_library(name = 'api',
   deps = [
     '//java/client/src/org/openqa/selenium:beta',
   ],
-  visibility = ['PUBLIC'],
+  visibility = [
+    '//java/client/src/org/openqa/selenium:core',
+    '//java/client/src/org/openqa/selenium:selenium',
+  ],
 )
 
 java_library(name = 'logging',
@@ -18,8 +21,10 @@ java_library(name = 'logging',
   deps = [
     ':api',
     '//java/client/src/org/openqa/selenium:beta',
-    '//third_party/java/guava-libraries:guava-libraries',
     '//third_party/java/gson:gson',
+    '//third_party/java/guava:guava',
   ],
-  visibility = ['PUBLIC'],
+  visibility = [
+    '//java/client/src/org/openqa/selenium:selenium'
+  ],
 )

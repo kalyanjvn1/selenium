@@ -19,12 +19,12 @@ package org.openqa.selenium.edge;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.io.IOException;
-
 import com.google.gson.JsonObject;
 
 import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
+
+import java.io.IOException;
 
 
 /**
@@ -51,24 +51,26 @@ import org.openqa.selenium.remote.DesiredCapabilities;
  * </code></pre>
  */
 public class EdgeOptions {
-	
+
     /**
      * Key used to store a set of EdgeOptions in a {@link DesiredCapabilities}
 	 * object.
 	 */
 	public static final String CAPABILITY = "edgeOptions";
-	
+
 	private String pageLoadStrategy;
-	
+
 	/**
 	 * Sets the page load strategy for  Edge
-	 * 
+	 *
 	 * Supported values are "normal", "eager" and "none"
-	 */ 
+   *
+   * @param strategy strategy for page load: normal, eager or none
+	 */
 	public void setPageLoadStrategy(String strategy) {
       this.pageLoadStrategy = checkNotNull(strategy);
 	}
-    
+
 	/**
 	 * Converts this instance to its JSON representation.
 	 *
@@ -77,14 +79,13 @@ public class EdgeOptions {
 	 */
 	public JsonObject toJson() throws IOException {
 	  JsonObject options = new JsonObject();
-	  if (this.pageLoadStrategy != null)
-	  {
+	  if (this.pageLoadStrategy != null) {
 		  options.addProperty(CapabilityType.PAGE_LOAD_STRATEGY, this.pageLoadStrategy);
 	  }
-	  
+
 	  return options;
-	}	
-	
+	}
+
     /**
      * Returns DesiredCapabilities for Edge with these options included as
      * capabilities. This does not copy the options. Further changes will be
@@ -94,11 +95,10 @@ public class EdgeOptions {
      */
     DesiredCapabilities toCapabilities() {
       DesiredCapabilities capabilities = DesiredCapabilities.edge();
-	  if (this.pageLoadStrategy != null)
-	  {
+	  if (this.pageLoadStrategy != null) {
           capabilities.setCapability(CapabilityType.PAGE_LOAD_STRATEGY, this.pageLoadStrategy);
 	  }
-	  
+
       return capabilities;
     }
 }

@@ -23,7 +23,7 @@ require 'rspec'
 require 'ci/reporter/rspec'
 
 require 'selenium-webdriver'
-require 'selenium/webdriver/spec_support'
+require_relative 'spec_support'
 
 include Selenium
 
@@ -36,20 +36,19 @@ end
 RSpec.configure do |c|
   c.include(WebDriver::SpecSupport::Helpers)
   c.before(:suite) do
-    if GlobalTestEnv.driver == :remote
-      GlobalTestEnv.remote_server.start
-    end
+    $DEBUG ||= ENV['DEBUG'] == 'true'
+    GlobalTestEnv.remote_server.start if GlobalTestEnv.driver == :remote
   end
 
   c.after(:suite) do
     GlobalTestEnv.quit_driver
   end
 
-  c.filter_run :focus => true if ENV['focus']
+  c.filter_run focus: true if ENV['focus']
 end
 
 WebDriver::Platform.exit_hook { GlobalTestEnv.quit }
 
 $stdout.sync = true
-GlobalTestEnv.unguarded = !!ENV['noguards']
+GlobalTestEnv.unguarded = ENV['noguards'] == 'true'
 WebDriver::SpecSupport::Guards.print_env

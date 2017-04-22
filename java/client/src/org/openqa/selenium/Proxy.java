@@ -17,7 +17,9 @@
 
 package org.openqa.selenium;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Configuration parameters for using proxies in WebDriver. Generally you should pass an object of
@@ -92,6 +94,42 @@ public class Proxy {
     }
   }
 
+  public Map<String, Object> toJson() {
+    Map<String, Object> m = new HashMap<>();
+
+    if (proxyType != ProxyType.UNSPECIFIED) {
+      m.put("proxyType", proxyType.toString().toLowerCase());
+    }
+    if (ftpProxy != null) {
+      m.put("ftpProxy", ftpProxy);
+    }
+    if (httpProxy != null) {
+      m.put("httpProxy", httpProxy);
+    }
+    if (noProxy != null) {
+      m.put("noProxy", noProxy);
+    }
+    if (sslProxy != null) {
+      m.put("sslProxy", sslProxy);
+    }
+    if (socksProxy != null) {
+      m.put("socksProxy", socksProxy);
+    }
+    if (socksUsername != null) {
+      m.put("socksUsername", socksUsername);
+    }
+    if (socksPassword != null) {
+      m.put("socksPassword", socksPassword);
+    }
+    if (proxyAutoconfigUrl != null) {
+      m.put("proxyAutoconfigUrl", proxyAutoconfigUrl);
+    }
+    if (autodetect) {
+      m.put("autodetect", true);
+    }
+    return m;
+  }
+
   /**
    * Gets the {@link ProxyType}.  This can signal if set to use a direct connection (without proxy),
    * manually set proxy settings, auto-configured proxy settings, or whether to use the default
@@ -106,6 +144,7 @@ public class Proxy {
   /**
    * Explicitly sets the proxy type, useful for forcing direct connection on Linux.
    *
+   * @param proxyType type of proxy being used
    * @return reference to self
    */
   public Proxy setProxyType(ProxyType proxyType) {
@@ -342,5 +381,82 @@ public class Proxy {
       }
     }
     return proxy;
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder("Proxy(");
+
+    switch (getProxyType()) {
+      case AUTODETECT:
+      case DIRECT:
+      case MANUAL:
+      case SYSTEM:
+        builder.append(getProxyType().toString().toLowerCase());
+        break;
+
+      case PAC:
+        builder.append("pac: ").append(getProxyAutoconfigUrl());
+        break;
+
+      case UNSPECIFIED:
+        break;
+    }
+
+    String p = getFtpProxy();
+    if (p != null) {
+      builder.append(", ftp=").append(p);
+    }
+    p = getHttpProxy();
+    if (p != null) {
+      builder.append(", http=").append(p);
+    }
+    p = getSocksProxy();
+    if (p != null) {
+      builder.append(", socks=").append(p);
+    }
+    p = getSslProxy();
+    if (p != null) {
+      builder.append(", ssl=").append(p);
+    }
+
+    builder.append(")");
+    return builder.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Proxy proxy = (Proxy) o;
+    return isAutodetect() == proxy.isAutodetect() &&
+           getProxyType() == proxy.getProxyType() &&
+           Objects.equals(getFtpProxy(), proxy.getFtpProxy()) &&
+           Objects.equals(getHttpProxy(), proxy.getHttpProxy()) &&
+           Objects.equals(getNoProxy(), proxy.getNoProxy()) &&
+           Objects.equals(getSslProxy(), proxy.getSslProxy()) &&
+           Objects.equals(getSocksProxy(), proxy.getSocksProxy()) &&
+           Objects.equals(getSocksUsername(), proxy.getSocksUsername()) &&
+           Objects.equals(getSocksPassword(), proxy.getSocksPassword()) &&
+           Objects.equals(getProxyAutoconfigUrl(), proxy.getProxyAutoconfigUrl());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        getProxyType(),
+        isAutodetect(),
+        getFtpProxy(),
+        getHttpProxy(),
+        getNoProxy(),
+        getSslProxy(),
+        getSocksProxy(),
+        getSocksUsername(),
+        getSocksPassword(),
+        getProxyAutoconfigUrl());
   }
 }

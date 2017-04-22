@@ -68,7 +68,7 @@ namespace OpenQA.Selenium.Support.UI
         /// <returns><see langword="true"/> when the URL is what it should be; otherwise, <see langword="false"/>.</returns>
         public static Func<IWebDriver, bool> UrlToBe(string url)
         {
-            return (driver) => { return driver.Url.ToLower().Equals(url.ToLower()); };
+            return (driver) => { return driver.Url.ToLowerInvariant().Equals(url.ToLowerInvariant()); };
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace OpenQA.Selenium.Support.UI
         /// <returns><see langword="true"/> when the URL contains the text; otherwise, <see langword="false"/>.</returns>
         public static Func<IWebDriver, bool> UrlContains(string fraction)
         {
-            return (driver) => { return driver.Url.ToLower().Contains(fraction.ToLower()); };
+            return (driver) => { return driver.Url.ToLowerInvariant().Contains(fraction.ToLowerInvariant()); };
         }
 
         /// <summary>
@@ -90,7 +90,6 @@ namespace OpenQA.Selenium.Support.UI
         {
             return (driver) =>
             {
-
                 var currentUrl = driver.Url;
                 var pattern = new Regex(regex, RegexOptions.IgnoreCase);
                 var match = pattern.Match(currentUrl);
@@ -149,6 +148,7 @@ namespace OpenQA.Selenium.Support.UI
                     {
                         return null;
                     }
+
                     return elements.Any() ? elements : null;
                 }
                 catch (StaleElementReferenceException)
@@ -175,6 +175,7 @@ namespace OpenQA.Selenium.Support.UI
                     {
                         return null;
                     }
+
                     return elements.Any() ? elements : null;
                 }
                 catch (StaleElementReferenceException)
@@ -184,14 +185,9 @@ namespace OpenQA.Selenium.Support.UI
             };
         }
 
-        private static IWebElement ElementIfVisible(IWebElement element)
-        {
-            return element.Displayed ? element : null;
-        }
-
         /// <summary>
         /// An expectation for checking that all elements present on the web page that
-        /// match the locator. 
+        /// match the locator.
         /// </summary>
         /// <param name="locator">The locator used to find the element.</param>
         /// <returns>The list of <see cref="IWebElement"/> once it is located.</returns>
@@ -372,7 +368,7 @@ namespace OpenQA.Selenium.Support.UI
                 try
                 {
                     var element = driver.FindElement(locator);
-                    return !(element.Displayed);
+                    return !element.Displayed;
                 }
                 catch (NoSuchElementException)
                 {
@@ -404,8 +400,11 @@ namespace OpenQA.Selenium.Support.UI
                     var element = driver.FindElement(locator);
                     var elementText = element.Text;
                     if (string.IsNullOrEmpty(elementText))
+                    {
                         return true;
-                    return !(elementText.Equals(text));
+                    }
+
+                    return !elementText.Equals(text);
                 }
                 catch (NoSuchElementException)
                 {
@@ -500,8 +499,6 @@ namespace OpenQA.Selenium.Support.UI
             };
         }
 
-
-
         /// <summary>
         /// An expectation for checking if the given element is selected.
         /// </summary>
@@ -594,6 +591,7 @@ namespace OpenQA.Selenium.Support.UI
         /// <summary>
         /// An expectation for checking the Alert State
         /// </summary>
+        /// <param name="state">A value indicating whether or not an alert should be displayed in order to meet this condition.</param>
         /// <returns><see langword="true"/> alert is in correct state present or not present; otherwise, <see langword="false"/>.</returns>
         public static Func<IWebDriver, bool> AlertState(bool state)
         {
@@ -612,6 +610,11 @@ namespace OpenQA.Selenium.Support.UI
                     return alertState == state;
                 }
             };
+        }
+
+        private static IWebElement ElementIfVisible(IWebElement element)
+        {
+            return element.Displayed ? element : null;
         }
     }
 }

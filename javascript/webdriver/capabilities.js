@@ -24,7 +24,6 @@ goog.provide('webdriver.Capabilities');
 goog.provide('webdriver.Capability');
 goog.provide('webdriver.ProxyConfig');
 
-goog.require('webdriver.Serializable');
 goog.require('webdriver.logging');
 
 
@@ -39,6 +38,7 @@ webdriver.Browser = {
   FIREFOX: 'firefox',
   IE: 'internet explorer',
   INTERNET_EXPLORER: 'internet explorer',
+  EDGE: 'MicrosoftEdge',
   IPAD: 'iPad',
   IPHONE: 'iPhone',
   OPERA: 'opera',
@@ -165,10 +165,8 @@ webdriver.Capability = {
  * @param {(webdriver.Capabilities|Object)=} opt_other Another set of
  *     capabilities to merge into this instance.
  * @constructor
- * @extends {webdriver.Serializable.<!Object.<string, ?>>}
  */
 webdriver.Capabilities = function(opt_other) {
-  webdriver.Serializable.call(this);
 
   /** @private {!Object.<string, ?>} */
   this.caps_ = {};
@@ -177,7 +175,6 @@ webdriver.Capabilities = function(opt_other) {
     this.merge(opt_other);
   }
 };
-goog.inherits(webdriver.Capabilities, webdriver.Serializable);
 
 
 /**
@@ -217,6 +214,16 @@ webdriver.Capabilities.ie = function() {
       set(webdriver.Capability.BROWSER_NAME,
           webdriver.Browser.INTERNET_EXPLORER).
       set(webdriver.Capability.PLATFORM, 'WINDOWS');
+};
+
+/**
+ * @return {!webdriver.Capabilities} A basic set of capabilities for
+ *     Microsoft Edge.
+ */
+webdriver.Capabilities.edge = function() {
+  return new webdriver.Capabilities().
+    set(webdriver.Capability.BROWSER_NAME, webdriver.Browser.EDGE).
+    set(webdriver.Capability.PLATFORM, 'WINDOWS');
 };
 
 
@@ -263,7 +270,8 @@ webdriver.Capabilities.phantomjs = function() {
  */
 webdriver.Capabilities.safari = function() {
   return new webdriver.Capabilities().
-      set(webdriver.Capability.BROWSER_NAME, webdriver.Browser.SAFARI);
+      set(webdriver.Capability.BROWSER_NAME, webdriver.Browser.SAFARI).
+      set(webdriver.Capability.PLATFORM, 'MAC');
 };
 
 
@@ -290,7 +298,6 @@ webdriver.Capabilities.htmlunitwithjs = function() {
 /**
  * @return {!Object.<string, ?>} The JSON representation of this instance. Note,
  *    the returned object may contain nested promises that are promised values.
- * @override
  */
 webdriver.Capabilities.prototype.serialize = function() {
   return this.caps_;

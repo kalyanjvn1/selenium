@@ -30,13 +30,14 @@ import javax.servlet.http.HttpServletResponse;
 
 public class MockedRequestHandler extends RequestHandler {
 
-
-  public MockedRequestHandler(SeleniumBasedRequest request, HttpServletResponse response,
-      Registry registry) {
+  public MockedRequestHandler(
+    SeleniumBasedRequest request,
+    HttpServletResponse response,
+    Registry registry) {
     super(request, response, registry);
   }
 
-  public void setSession(TestSession session){
+  public void setSession(TestSession session) {
     super.setSession(session);
   }
 

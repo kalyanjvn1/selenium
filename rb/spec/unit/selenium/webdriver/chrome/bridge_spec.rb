@@ -17,140 +17,98 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require File.expand_path("../../spec_helper", __FILE__)
-
+require File.expand_path('../../spec_helper', __FILE__)
 
 module Selenium
   module WebDriver
     module Chrome
-
       describe Bridge do
-        let(:resp)    { {"sessionId" => "foo", "value" => @default_capabilities }}
-        let(:service) { double(Service, :start => true, :uri => "http://example.com") }
+        let(:resp)    { {'sessionId' => 'foo', 'value' => @default_capabilities} }
+        let(:service) { double(Service, start: true, uri: 'http://example.com') }
         let(:caps)    { {} }
-        let(:http)    { double(Remote::Http::Default, :call => resp).as_null_object   }
+        let(:http)    { double(Remote::Http::Default, call: resp).as_null_object }
 
         before do
           @default_capabilities = Remote::Capabilities.chrome.as_json
 
-          Remote::Capabilities.stub(:chrome).and_return(caps)
-          Service.stub(:default_service).and_return(service)
+          allow(Remote::Capabilities).to receive(:chrome).and_return(caps)
+          allow(Service).to receive(:binary_path).and_return('/foo')
+          allow(Service).to receive(:new).and_return(service)
         end
 
-        it "sets the nativeEvents capability" do
-          Bridge.new(:http_client => http, :native_events => true)
+        it 'sets the args capability' do
+          Bridge.new(http_client: http, args: %w[--foo=bar])
 
-          caps['chromeOptions']['nativeEvents'].should be true
-          caps['chrome.nativeEvents'].should be true
+          expect(caps[:chrome_options]['args']).to eq(%w[--foo=bar])
         end
 
-        it "sets the args capability" do
-          Bridge.new(:http_client => http, :args => %w[--foo=bar])
+        it 'sets the proxy capabilitiy' do
+          proxy = Proxy.new(http: 'localhost:1234')
+          Bridge.new(http_client: http, proxy: proxy)
 
-          caps['chromeOptions']['args'].should == %w[--foo=bar]
-          caps['chrome.switches'].should == %w[--foo=bar]
+          expect(caps[:proxy]).to eq(proxy)
         end
 
-        it "sets the proxy capabilitiy" do
-          proxy = Proxy.new(:http => "localhost:1234")
-          Bridge.new(:http_client => http, :proxy => proxy)
+        it 'does not set the chrome.detach capability by default' do
+          Bridge.new(http_client: http)
 
-          caps['proxy'].should == proxy
+          expect(caps[:chrome_options]).to be nil
+          expect(caps['chrome.detach']).to be nil
         end
 
-        it "sets the chrome.verbose capability" do
-          Bridge.new(:http_client => http, :verbose => true)
+        it 'sets the prefs capability' do
+          Bridge.new(http_client: http, prefs: {foo: 'bar'})
 
-          caps['chromeOptions']['verbose'].should be true
-          caps['chrome.verbose'].should be true
+          expect(caps[:chrome_options]['prefs']).to eq(foo: 'bar')
         end
 
-        it "sets the chrome.detach capability" do
-          Bridge.new(:http_client => http) # true by default
+        it 'lets the user override chrome.detach' do
+          Bridge.new(http_client: http, detach: true)
 
-          caps['chromeOptions']['detach'].should be true
-          caps['chrome.detach'].should be true
+          expect(caps[:chrome_options]['detach']).to be true
         end
 
-        it "sets the prefs capability" do
-          Bridge.new(:http_client => http, :prefs => {:foo => "bar"})
-
-          caps['chromeOptions']['prefs'].should == {:foo => "bar"}
-          caps['chrome.prefs'].should == {:foo => "bar"}
+        it 'raises an ArgumentError if args is not an Array' do
+          expect { Bridge.new(args: '--foo=bar') }.to raise_error(ArgumentError)
         end
 
-        it "lets the user override chrome.detach" do
-          Bridge.new(:http_client => http, :detach => false)
-
-          caps['chromeOptions']['detach'].should be false
-          caps['chrome.detach'].should be false
-        end
-
-        it "lets the user override chrome.noWebsiteTestingDefaults" do
-          Bridge.new(:http_client => http, :no_website_testing_defaults => true)
-
-          caps['chromeOptions']['noWebsiteTestingDefaults'].should be true
-          caps['chrome.noWebsiteTestingDefaults'].should be true
-        end
-
-        it "uses the user-provided server URL if given" do
-          Service.should_not_receive(:default_service)
-          http.should_receive(:server_url=).with(URI.parse("http://example.com"))
-
-          Bridge.new(:http_client => http, :url => "http://example.com")
-        end
-
-        it "raises an ArgumentError if args is not an Array" do
-          lambda { Bridge.new(:args => "--foo=bar")}.should raise_error(ArgumentError)
-        end
-
-        it "uses the given profile" do
+        it 'uses the given profile' do
           profile = Profile.new
 
           profile['some_pref'] = true
           profile.add_extension(__FILE__)
 
-          Bridge.new(:http_client => http, :profile => profile)
+          Bridge.new(http_client: http, profile: profile)
 
           profile_data = profile.as_json
-          caps['chromeOptions']['profile'].should == profile_data['zip']
-          caps['chromeOptions']['extensions'].should == profile_data['extensions']
-
-          caps['chrome.profile'].should == profile_data['zip']
-          caps['chrome.extensions'].should == profile_data['extensions']
+          expect(caps[:chrome_options]['args'].first).to include(profile_data[:directory])
+          expect(caps[:chrome_options]['extensions']).to eq(profile_data[:extensions])
         end
 
         it 'takes desired capabilities' do
           custom_caps = Remote::Capabilities.new
-          custom_caps['chromeOptions'] = {'foo' => 'bar'}
+          custom_caps[:chrome_options] = {'foo' => 'bar'}
 
           expect(http).to receive(:call) do |_, _, payload|
-            payload[:desiredCapabilities]['chromeOptions'].should include('foo' => 'bar')
+            expect(payload[:desiredCapabilities][:chrome_options]).to include('foo' => 'bar')
             resp
           end
 
-          Bridge.new(:http_client => http, :desired_capabilities => custom_caps)
+          Bridge.new(http_client: http, desired_capabilities: custom_caps)
         end
 
         it 'lets direct arguments take presedence over capabilities' do
           custom_caps = Remote::Capabilities.new
-          custom_caps['chromeOptions'] = {'args' => %w[foo bar]}
+          custom_caps[:chrome_options] = {'args' => %w[foo bar]}
 
           expect(http).to receive(:call) do |_, _, payload|
-            payload[:desiredCapabilities]['chromeOptions']['args'].should == ['baz']
+            expect(payload[:desiredCapabilities][:chrome_options]['args']).to eq(['baz'])
             resp
           end
 
-          Bridge.new(:http_client => http, :desired_capabilities => custom_caps, :args => %w[baz])
-        end
-
-        it 'accepts :service_log_path' do
-          Service.should_receive(:default_service).with("--log-path=/foo/bar")
-          Bridge.new(:http_client => http, :service_log_path => "/foo/bar")
+          Bridge.new(http_client: http, desired_capabilities: custom_caps, args: %w[baz])
         end
       end
-
     end # Chrome
   end # WebDriver
 end # Selenium
-

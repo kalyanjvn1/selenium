@@ -16,12 +16,6 @@
 // limitations under the License.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing;
-using System.Globalization;
-using OpenQA.Selenium.Internal;
 using OpenQA.Selenium.Remote;
 
 namespace OpenQA.Selenium.PhantomJS
@@ -45,7 +39,7 @@ namespace OpenQA.Selenium.PhantomJS
     public class PhantomJSWebElement : RemoteWebElement
     {
         /// <summary>
-        /// Initializes a new instance of the PhantomJSWebElement class.
+        /// Initializes a new instance of the <see cref="PhantomJSWebElement"/> class.
         /// </summary>
         /// <param name="parent">Driver in use.</param>
         /// <param name="id">ID of the element.</param>

@@ -17,31 +17,34 @@
 # specific language governing permissions and limitations
 # under the License.
 
+require_relative '../spec_helper'
+
 module Selenium
   module WebDriver
     module Chrome
+      compliant_on browser: :chrome do
+        describe Driver do
+          it 'should accept an array of custom command line arguments' do
+            begin
+              driver = Selenium::WebDriver.for :chrome, args: ['--user-agent=foo;bar']
+              driver.navigate.to url_for('click_jacker.html')
 
-      describe Driver do
-        it "should accept an array of custom command line arguments" do
-          begin
-            driver = Selenium::WebDriver.for :chrome, :args => ["--user-agent=foo;bar"]
-            driver.navigate.to url_for("click_jacker.html")
-
-            ua = driver.execute_script "return window.navigator.userAgent"
-            ua.should == "foo;bar"
-          ensure
-            driver.quit if driver
+              ua = driver.execute_script 'return window.navigator.userAgent'
+              expect(ua).to eq('foo;bar')
+            ensure
+              driver.quit if driver
+            end
           end
-        end
 
-        it "should raise ArgumentError if :args is not an Array" do
-          lambda {
-            Selenium::WebDriver.for(:chrome, :args => "--foo")
-          }.should raise_error(ArgumentError)
+          it 'should raise ArgumentError if :args is not an Array' do
+            expect do
+              Selenium::WebDriver.for(:chrome, args: '--foo')
+            end.to raise_error(ArgumentError)
+          end
+
+          it_behaves_like 'driver that can be started concurrently', :chrome
         end
       end
-
     end # Chrome
   end # WebDriver
 end # Selenium
-

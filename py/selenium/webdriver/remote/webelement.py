@@ -15,26 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import base64
 import hashlib
+import pkgutil
 import os
 import zipfile
-try:
-    from StringIO import StringIO as IOStream
-except ImportError:  # 3+
-    from io import BytesIO as IOStream
-import base64
 
 from .command import Command
 from selenium.common.exceptions import WebDriverException
-from selenium.common.exceptions import InvalidSelectorException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.utils import keys_to_typing
 
-
+# Python 3 imports
 try:
     str = basestring
 except NameError:
     pass
+
+try:
+    from StringIO import StringIO as IOStream
+except ImportError:  # 3+
+    from io import BytesIO as IOStream
+
+getAttribute_js = pkgutil.get_data(__package__, 'getAttribute.js').decode('utf8')
+isDisplayed_js = pkgutil.get_data(__package__, 'isDisplayed.js').decode('utf8')
 
 
 class WebElement(object):
@@ -54,6 +58,10 @@ class WebElement(object):
         self._id = id_
         self._w3c = w3c
 
+    def __repr__(self):
+        return '<{0.__module__}.{0.__name__} (session="{1}", element="{2}")>'.format(
+            type(self), self._parent.session_id, self._id)
+
     @property
     def tag_name(self):
         """This element's ``tagName`` property."""
@@ -70,11 +78,36 @@ class WebElement(object):
 
     def submit(self):
         """Submits a form."""
-        self._execute(Command.SUBMIT_ELEMENT)
+        if self._w3c:
+            form = self.find_element(By.XPATH, "./ancestor-or-self::form")
+            self._parent.execute_script(
+                "var e = arguments[0].ownerDocument.createEvent('Event');"
+                "e.initEvent('submit', true, true);"
+                "if (arguments[0].dispatchEvent(e)) { arguments[0].submit() }", form)
+        else:
+            self._execute(Command.SUBMIT_ELEMENT)
 
     def clear(self):
         """Clears the text if it's a text entry element."""
         self._execute(Command.CLEAR_ELEMENT)
+
+    def get_property(self, name):
+        """
+        Gets the given property of the element.
+
+        :Args:
+            - name - Name of the property to retrieve.
+
+        Example::
+
+            # Check if the "active" CSS class is applied to an element.
+            text_length = target_element.get_property("text_length")
+        """
+        try:
+            return self._execute(Command.GET_ELEMENT_PROPERTY, {"name": name})["value"]
+        except WebDriverException:
+            # if we hit an end point that doesnt understand getElementProperty lets fake it
+            return self.parent.execute_script('return arguments[0][arguments[1]]', self, name)
 
     def get_attribute(self, name):
         """Gets the given attribute or property of the element.
@@ -98,14 +131,18 @@ class WebElement(object):
             is_active = "active" in target_element.get_attribute("class")
 
         """
-        resp = self._execute(Command.GET_ELEMENT_ATTRIBUTE, {'name': name})
+
         attributeValue = ''
-        if resp['value'] is None:
-            attributeValue = None
+        if self._w3c:
+            attributeValue = self.parent.execute_script(
+                "return (%s).apply(null, arguments);" % getAttribute_js,
+                self, name)
         else:
-            attributeValue = resp['value']
-            if name != 'value' and attributeValue.lower() in ('true', 'false'):
-                attributeValue = attributeValue.lower()
+            resp = self._execute(Command.GET_ELEMENT_ATTRIBUTE, {'name': name})
+            attributeValue = resp.get('value')
+            if attributeValue is not None:
+                if name != 'value' and attributeValue.lower() in ('true', 'false'):
+                    attributeValue = attributeValue.lower()
         return attributeValue
 
     def is_selected(self):
@@ -123,7 +160,7 @@ class WebElement(object):
         """Finds element within this element's children by ID.
 
         :Args:
-            - id_ - ID of child element to locate.
+            - id\_ - ID of child element to locate.
         """
         return self.find_element(by=By.ID, value=id_)
 
@@ -131,7 +168,7 @@ class WebElement(object):
         """Finds a list of elements within this element's children by ID.
 
         :Args:
-            - id_ - Id of child element to find.
+            - id\_ - Id of child element to find.
         """
         return self.find_elements(by=By.ID, value=id_)
 
@@ -253,7 +290,6 @@ class WebElement(object):
         """
         return self.find_element(by=By.CLASS_NAME, value=name)
 
-
     def find_elements_by_class_name(self, name):
         """Finds a list of elements within this element's children by class name.
 
@@ -283,7 +319,7 @@ class WebElement(object):
 
         :Args:
             - value - A string for typing, or setting form fields.  For setting
-            file inputs, this could be a local file path.
+              file inputs, this could be a local file path.
 
         Use this to send simple key events or to fill out form fields::
 
@@ -308,23 +344,20 @@ class WebElement(object):
             if local_file is not None:
                 value = self._upload(local_file)
 
-        typing = []
-        for val in value:
-            if isinstance(val, Keys):
-                typing.append(val)
-            elif isinstance(val, int):
-                val = val.__str__()
-                for i in range(len(val)):
-                    typing.append(val[i])
-            else:
-                for i in range(len(val)):
-                    typing.append(val[i])
-        self._execute(Command.SEND_KEYS_TO_ELEMENT, {'value': typing})
+        self._execute(Command.SEND_KEYS_TO_ELEMENT,
+                      {'text': "".join(keys_to_typing(value)),
+                       'value': keys_to_typing(value)})
 
     # RenderedWebElement Items
     def is_displayed(self):
         """Whether the element is visible to a user."""
-        return self._execute(Command.IS_ELEMENT_DISPLAYED)['value']
+        # Only go into this conditional for browsers that don't use the atom themselves
+        if self._w3c and self.parent.capabilities['browserName'] == 'safari':
+            return self.parent.execute_script(
+                "return (%s).apply(null, arguments);" % isDisplayed_js,
+                self)
+        else:
+            return self._execute(Command.IS_ELEMENT_DISPLAYED)['value']
 
     @property
     def location_once_scrolled_into_view(self):
@@ -336,28 +369,41 @@ class WebElement(object):
         the element is not visible.
 
         """
-        return self._execute(Command.GET_ELEMENT_LOCATION_ONCE_SCROLLED_INTO_VIEW)['value']
+        if self._w3c:
+            old_loc = self._execute(Command.W3C_EXECUTE_SCRIPT, {
+                'script': "arguments[0].scrollIntoView(true); return arguments[0].getBoundingClientRect()",
+                'args': [self]})['value']
+            return {"x": round(old_loc['x']),
+                    "y": round(old_loc['y'])}
+        else:
+            return self._execute(Command.GET_ELEMENT_LOCATION_ONCE_SCROLLED_INTO_VIEW)['value']
 
     @property
     def size(self):
         """The size of the element."""
-        size = self._execute(Command.GET_ELEMENT_SIZE)['value']
-        new_size = {}
-        new_size["height"] = size["height"]
-        new_size["width"] = size["width"]
+        size = {}
+        if self._w3c:
+            size = self._execute(Command.GET_ELEMENT_RECT)['value']
+        else:
+            size = self._execute(Command.GET_ELEMENT_SIZE)['value']
+        new_size = {"height": size["height"],
+                    "width": size["width"]}
         return new_size
 
     def value_of_css_property(self, property_name):
         """The value of a CSS property."""
-        return self._execute(Command.GET_ELEMENT_VALUE_OF_CSS_PROPERTY,
-                        {'propertyName': property_name})['value']
+        return self._execute(Command.GET_ELEMENT_VALUE_OF_CSS_PROPERTY, {
+            'propertyName': property_name})['value']
 
     @property
     def location(self):
         """The location of the element in the renderable canvas."""
-        old_loc = self._execute(Command.GET_ELEMENT_LOCATION)['value']
-        new_loc = {"x": old_loc['x'],
-                   "y": old_loc['y']}
+        if self._w3c:
+            old_loc = self._execute(Command.GET_ELEMENT_RECT)['value']
+        else:
+            old_loc = self._execute(Command.GET_ELEMENT_LOCATION)['value']
+        new_loc = {"x": round(old_loc['x']),
+                   "y": round(old_loc['y'])}
         return new_loc
 
     @property
@@ -406,7 +452,6 @@ class WebElement(object):
             del png
         return True
 
-
     @property
     def parent(self):
         """Internal reference to the WebDriver instance this element was found from."""
@@ -448,9 +493,6 @@ class WebElement(object):
         return self._parent.execute(command, params)
 
     def find_element(self, by=By.ID, value=None):
-        if not By.is_valid(by) or not isinstance(value, str):
-            raise InvalidSelectorException("Invalid locator values passed in")
-
         if self._w3c:
             if by == By.ID:
                 by = By.CSS_SELECTOR
@@ -468,9 +510,6 @@ class WebElement(object):
                              {"using": by, "value": value})['value']
 
     def find_elements(self, by=By.ID, value=None):
-        if not By.is_valid(by) or not isinstance(value, str):
-            raise InvalidSelectorException("Invalid locator values passed in")
-
         if self._w3c:
             if by == By.ID:
                 by = By.CSS_SELECTOR
@@ -499,8 +538,7 @@ class WebElement(object):
         if not isinstance(content, str):
             content = content.decode('utf-8')
         try:
-            return self._execute(Command.UPLOAD_FILE,
-                            {'file': content})['value']
+            return self._execute(Command.UPLOAD_FILE, {'file': content})['value']
         except WebDriverException as e:
             if "Unrecognized command: POST" in e.__str__():
                 return filename

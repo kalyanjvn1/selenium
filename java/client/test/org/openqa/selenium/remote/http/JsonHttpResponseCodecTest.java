@@ -40,9 +40,6 @@ import org.openqa.selenium.remote.ErrorCodes;
 import org.openqa.selenium.remote.JsonToBeanConverter;
 import org.openqa.selenium.remote.Response;
 
-/**
- * Tests for {@link JsonHttpResponseCodec}.
- */
 @RunWith(JUnit4.class)
 public class JsonHttpResponseCodecTest {
 
@@ -62,7 +59,7 @@ public class JsonHttpResponseCodecTest {
         Response.class, new String(converted.getContent(), UTF_8));
 
     assertEquals(response.getStatus(), rebuilt.getStatus());
-    assertEquals(ErrorCodes.toState(response.getStatus()), rebuilt.getState());
+    assertEquals(new ErrorCodes().toState(response.getStatus()), rebuilt.getState());
     assertEquals(response.getSessionId(), rebuilt.getSessionId());
     assertEquals(response.getValue(), rebuilt.getValue());
   }
@@ -81,7 +78,7 @@ public class JsonHttpResponseCodecTest {
         Response.class, new String(converted.getContent(), UTF_8));
 
     assertEquals(response.getStatus(), rebuilt.getStatus());
-    assertEquals(ErrorCodes.toState(response.getStatus()), rebuilt.getState());
+    assertEquals(new ErrorCodes().toState(response.getStatus()), rebuilt.getState());
     assertEquals(response.getSessionId(), rebuilt.getSessionId());
     assertEquals(response.getValue(), rebuilt.getValue());
   }
@@ -107,7 +104,7 @@ public class JsonHttpResponseCodecTest {
     response.setContent("{\"foobar\"}".getBytes(UTF_8));
 
     Response decoded = codec.decode(response);
-    assertEquals(ErrorCodes.SUCCESS, decoded.getStatus());
+    assertEquals(0, decoded.getStatus().longValue());
     assertEquals("{\"foobar\"}", decoded.getValue());
   }
 
@@ -117,7 +114,7 @@ public class JsonHttpResponseCodecTest {
     response.setStatus(HTTP_NO_CONTENT);
 
     Response decoded = codec.decode(response);
-    assertEquals(ErrorCodes.SUCCESS, decoded.getStatus());
+    assertNull(decoded.getStatus());
     assertNull(decoded.getValue());
   }
 
@@ -128,7 +125,7 @@ public class JsonHttpResponseCodecTest {
     response.setContent("{\"foobar\"}".getBytes(UTF_8));
 
     Response decoded = codec.decode(response);
-    assertEquals(ErrorCodes.UNKNOWN_COMMAND, decoded.getStatus());
+    assertEquals(ErrorCodes.UNKNOWN_COMMAND, decoded.getStatus().intValue());
     assertEquals("{\"foobar\"}", decoded.getValue());
   }
 
@@ -139,7 +136,7 @@ public class JsonHttpResponseCodecTest {
     response.setContent("{\"foobar\"}".getBytes(UTF_8));
 
     Response decoded = codec.decode(response);
-    assertEquals(ErrorCodes.UNHANDLED_ERROR, decoded.getStatus());
+    assertEquals(ErrorCodes.UNHANDLED_ERROR, decoded.getStatus().intValue());
     assertEquals("{\"foobar\"}", decoded.getValue());
   }
 
@@ -178,7 +175,7 @@ public class JsonHttpResponseCodecTest {
     response.setContent("{\"status\":0,\"value\":\"foo\"}\0\0".getBytes(UTF_8));
 
     Response decoded = codec.decode(response);
-    assertEquals(ErrorCodes.SUCCESS, decoded.getStatus());
+    assertEquals(ErrorCodes.SUCCESS, decoded.getStatus().intValue());
     assertEquals("foo", decoded.getValue());
   }
 }

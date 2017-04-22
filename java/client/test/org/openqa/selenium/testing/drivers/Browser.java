@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 package org.openqa.selenium.testing.drivers;
 
 import java.util.logging.Logger;
@@ -23,14 +22,9 @@ import java.util.logging.Logger;
 public enum Browser {
 
   chrome,
+  edge,
   ff,
-  htmlunit {
-    @Override
-    public boolean isJavascriptEnabled() {
-      return false;
-    }
-  },
-  htmlunit_js,
+  htmlunit,
   ie,
   none, // For those cases where you don't actually want a browser
   opera,
@@ -53,10 +47,6 @@ public enum Browser {
       log.severe("Cannot locate matching browser for: " + browserName);
       return null;
     }
-  }
-
-  public boolean isJavascriptEnabled() {
-    return true;
   }
 
 }

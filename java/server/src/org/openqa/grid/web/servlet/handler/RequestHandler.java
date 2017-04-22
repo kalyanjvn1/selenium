@@ -25,7 +25,6 @@ import org.openqa.grid.internal.RemoteProxy;
 import org.openqa.grid.internal.SessionTerminationReason;
 import org.openqa.grid.internal.TestSession;
 import org.openqa.grid.internal.exception.NewSessionException;
-import org.openqa.grid.internal.listeners.Prioritizer;
 import org.openqa.grid.internal.listeners.TestSessionListener;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
@@ -78,13 +77,12 @@ public class RequestHandler implements Comparable<RequestHandler> {
    * Forward the new session request to the TestSession that has been assigned, and parse the
    * response to extract and return the external key assigned by the remote.
    *
+   * @param session session
    * @throws NewSessionException in case anything wrong happens during the new session process.
    */
   public void forwardNewSessionRequestAndUpdateRegistry(TestSession session)
       throws NewSessionException {
     try {
-      String content = request.getNewSessionRequestedCapability(session);
-      getRequest().setBody(content);
       session.forward(getRequest(), getResponse(), true);
     } catch (IOException e) {
       //log.warning("Error forwarding the request " + e.getMessage());
@@ -130,7 +128,7 @@ public class RequestHandler implements Comparable<RequestHandler> {
         } catch (ClientGoneException e) {
           log.log(Level.WARNING, "The client is gone for session " + session + ", terminating");
           registry.terminate(session, SessionTerminationReason.CLIENT_GONE);
-        } catch (SocketTimeoutException e){
+        } catch (SocketTimeoutException e) {
           log.log(Level.SEVERE, "Socket timed out for session " + session + ", " + e.getMessage());
           registry.terminate(session, SessionTerminationReason.SO_TIMEOUT);
         } catch (Throwable t) {
@@ -178,15 +176,17 @@ public class RequestHandler implements Comparable<RequestHandler> {
   /**
    * wait for the registry to match the request with a TestSlot.
    *
+   * @throws InterruptedException Interrupted exception
    * @throws TimeoutException if the request reaches the new session wait timeout before being
    *                          assigned.
    */
   public void waitForSessionBound() throws InterruptedException, TimeoutException {
     // Maintain compatibility with Grid 1.x, which had the ability to
-    // specify how long to wait before canceling
-    // a request.
-    if (registry.getNewSessionWaitTimeout() != -1) {
-      if (!sessionAssigned.await(registry.getNewSessionWaitTimeout(), TimeUnit.MILLISECONDS)) {
+    // specify how long to wait before canceling a request.
+    Integer newSessionWaitTimeout = registry.getConfiguration().newSessionWaitTimeout != null ?
+                                    registry.getConfiguration().newSessionWaitTimeout : 0;
+    if (newSessionWaitTimeout > 0) {
+      if (!sessionAssigned.await(newSessionWaitTimeout.longValue(), TimeUnit.MILLISECONDS)) {
         throw new TimeoutException("Request timed out waiting for a node to become available.");
       }
     } else {
@@ -196,32 +196,26 @@ public class RequestHandler implements Comparable<RequestHandler> {
   }
 
   /**
-   * the SeleniumBasedRequest this handler is processing.
+   * @return the SeleniumBasedRequest this handler is processing.
    */
   public SeleniumBasedRequest getRequest() {
     return request;
   }
 
   /**
-   * the HttpServletResponse the handler is writing to.
+   * @return the HttpServletResponse the handler is writing to.
    */
   public HttpServletResponse getResponse() {
     return response;
   }
 
-
-
   public int compareTo(RequestHandler o) {
-    Prioritizer prioritizer = registry.getPrioritizer();
-    if (prioritizer != null) {
-      return prioritizer.compareTo(this.getRequest().getDesiredCapabilities(), o.getRequest()
+    if (registry.getConfiguration().prioritizer != null) {
+      return registry.getConfiguration().prioritizer.compareTo(this.getRequest().getDesiredCapabilities(), o.getRequest()
           .getDesiredCapabilities());
-    } else {
-      return 0;
     }
+    return 0;
   }
-
-
 
   protected void setSession(TestSession session) {
     this.session = session;
@@ -241,16 +235,15 @@ public class RequestHandler implements Comparable<RequestHandler> {
   }
 
   /**
-   * return the session from the server ( = opaque handle used by the server to determine where to
+   * @return the session from the server ( = opaque handle used by the server to determine where to
    * route session-specific commands from the JSON wire protocol ). will be null until the request
    * has been processed.
    */
   public ExternalSessionKey getServerSession() {
     if (session == null) {
       return null;
-    } else {
-      return session.getExternalKey();
     }
+    return session.getExternalKey();
   }
 
   public void stop() {
@@ -260,7 +253,8 @@ public class RequestHandler implements Comparable<RequestHandler> {
   @Override
   public String toString() {
     StringBuilder b = new StringBuilder();
-    b.append("session :").append(session).append(" , ");
+    b.append("session:").append(session).append(", ");
+    b.append("caps: ").append(request.getDesiredCapabilities());
     b.append("\n");
     return b.toString();
   }

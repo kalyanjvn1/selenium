@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Text;
 using NUnit.Framework;
 using NMock2;
 
@@ -60,7 +58,6 @@ namespace OpenQA.Selenium.Support.UI
         }
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(WebDriverTimeoutException), ExpectedMessage = "Timed out after 0 seconds")]
         public void ChecksTimeoutAfterConditionSoZeroTimeoutWaitsCanSucceed()
         {
             var condition = GetCondition(() => null,
@@ -71,7 +68,7 @@ namespace OpenQA.Selenium.Support.UI
             IWait<IWebDriver> wait = new DefaultWait<IWebDriver>(mockDriver, mockClock);
             wait.Timeout = TimeSpan.FromMilliseconds(0);
 
-            wait.Until(condition);
+            Assert.Throws<WebDriverTimeoutException>(() => wait.Until(condition), "Timed out after 0 seconds");
         }
 
         [Test]
@@ -131,7 +128,6 @@ namespace OpenQA.Selenium.Support.UI
         }
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(WebDriverTimeoutException), ExpectedMessage = "Timed out after 0 seconds: Expected custom timeout message")]
         public void TmeoutMessageIncludesCustomMessage()
         {
             var condition = GetCondition(() => false);
@@ -142,7 +138,7 @@ namespace OpenQA.Selenium.Support.UI
             wait.Timeout = TimeSpan.FromMilliseconds(0);
             wait.Message = "Expected custom timeout message";
 
-            wait.Until(condition);
+            Assert.Throws<WebDriverTimeoutException>(() => wait.Until(condition), "Timed out after 0 seconds: Expected custom timeout message");
         }
 
         // Prevent inlining, because there is an assertion for the stack frame of this method

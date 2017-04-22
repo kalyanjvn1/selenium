@@ -20,7 +20,7 @@ package org.openqa.grid.web;
 import com.google.common.collect.Maps;
 
 import org.openqa.grid.internal.Registry;
-import org.openqa.grid.internal.utils.GridHubConfiguration;
+import org.openqa.grid.internal.utils.configuration.GridHubConfiguration;
 import org.openqa.grid.web.servlet.DisplayHelpServlet;
 import org.openqa.grid.web.servlet.DriverServlet;
 import org.openqa.grid.web.servlet.Grid1HeartbeatServlet;
@@ -33,10 +33,12 @@ import org.openqa.grid.web.servlet.TestSessionStatusServlet;
 import org.openqa.grid.web.servlet.beta.ConsoleServlet;
 import org.openqa.grid.web.utils.ExtraServletUtil;
 import org.openqa.selenium.net.NetworkUtils;
-import org.seleniumhq.jetty7.server.Server;
-import org.seleniumhq.jetty7.server.bio.SocketConnector;
-import org.seleniumhq.jetty7.servlet.ServletContextHandler;
-import org.seleniumhq.jetty7.util.thread.QueuedThreadPool;
+import org.seleniumhq.jetty9.server.HttpConfiguration;
+import org.seleniumhq.jetty9.server.HttpConnectionFactory;
+import org.seleniumhq.jetty9.server.Server;
+import org.seleniumhq.jetty9.server.ServerConnector;
+import org.seleniumhq.jetty9.servlet.ServletContextHandler;
+import org.seleniumhq.jetty9.util.thread.QueuedThreadPool;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -46,17 +48,14 @@ import java.util.logging.Logger;
 import javax.servlet.Servlet;
 
 /**
- * Jetty server. Main entry point for everything about the grid. <p/> Except for unit tests, this
+ * Jetty server. Main entry point for everything about the grid. <p> Except for unit tests, this
  * should be a singleton.
  */
 public class Hub {
 
   private static final Logger log = Logger.getLogger(Hub.class.getName());
 
-  private final int port;
-  private final String host;
-  private final int maxThread;
-  private final boolean isHostRestricted;
+  private GridHubConfiguration config;
   private final Registry registry;
   private final Map<String, Class<? extends Servlet>> extraServlet = Maps.newHashMap();
 
@@ -75,45 +74,88 @@ public class Hub {
     return registry;
   }
 
-  public Hub(GridHubConfiguration config) {
-    registry = Registry.newInstance(this, config);
+  public Hub(GridHubConfiguration gridHubConfiguration) {
+    registry = Registry.newInstance(this, gridHubConfiguration);
 
-    maxThread = config.getJettyMaxThreads();
-
-    if (config.getHost() != null) {
-      host = config.getHost();
-      isHostRestricted = true;
-    } else {
+    config = gridHubConfiguration;
+    if (config.host == null) {
       NetworkUtils utils = new NetworkUtils();
-      host = utils.getIp4NonLoopbackAddressOfThisMachine().getHostAddress();
-      isHostRestricted = false;
+      config.host = utils.getIp4NonLoopbackAddressOfThisMachine().getHostAddress();
     }
-    this.port = config.getPort();
 
-    for (String s : config.getServlets()) {
-      Class<? extends Servlet> servletClass = ExtraServletUtil.createServlet(s);
-      if (servletClass != null) {
-        String path = "/grid/admin/" + servletClass.getSimpleName() + "/*";
-        log.info("binding " + servletClass.getCanonicalName() + " to " + path);
-        addServlet(path, servletClass);
+    if (config.port == null) {
+      config.port = 4444;
+    }
+
+    if (config.servlets != null) {
+      for (String s : config.servlets) {
+        Class<? extends Servlet> servletClass = ExtraServletUtil.createServlet(s);
+        if (servletClass != null) {
+          String path = "/grid/admin/" + servletClass.getSimpleName() + "/*";
+          log.info("binding " + servletClass.getCanonicalName() + " to " + path);
+          addServlet(path, servletClass);
+        }
       }
     }
+  }
 
-    initServer();
+  private void addDefaultServlets(ServletContextHandler handler) {
+    // add mandatory default servlets
+    handler.addServlet(RegistrationServlet.class.getName(), "/grid/register/*");
 
+    handler.addServlet(DriverServlet.class.getName(), "/wd/hub/*");
+    handler.addServlet(DriverServlet.class.getName(), "/selenium-server/driver/*");
+
+    handler.addServlet(ProxyStatusServlet.class.getName(), "/grid/api/proxy/*");
+
+    handler.addServlet(HubStatusServlet.class.getName(), "/grid/api/hub/*");
+
+    handler.addServlet(TestSessionStatusServlet.class.getName(), "/grid/api/testsession/*");
+
+    // add optional default servlets
+    if (!config.isWithOutServlet(ResourceServlet.class)) {
+      handler.addServlet(ResourceServlet.class.getName(), "/grid/resources/*");
+    }
+
+    if (!config.isWithOutServlet(DisplayHelpServlet.class)) {
+      handler.addServlet(DisplayHelpServlet.class.getName(), "/*");
+      handler.setInitParameter(DisplayHelpServlet.HELPER_TYPE_PARAMETER, config.role);
+    }
+
+    if (!config.isWithOutServlet(ConsoleServlet.class)) {
+      handler.addServlet(ConsoleServlet.class.getName(), "/grid/console/*");
+      handler.setInitParameter(ConsoleServlet.CONSOLE_PATH_PARAMETER, "/grid/console");
+    }
+
+    if (!config.isWithOutServlet(LifecycleServlet.class)) {
+      handler.addServlet(LifecycleServlet.class.getName(), "/lifecycle-manager/*");
+    }
+
+    if (!config.isWithOutServlet(Grid1HeartbeatServlet.class)) {
+      handler.addServlet(Grid1HeartbeatServlet.class.getName(), "/heartbeat");
+    }
   }
 
   private void initServer() {
     try {
-      server = new Server();
-      SocketConnector socketListener = new SocketConnector();
-      socketListener.setMaxIdleTime(60000);
-      if (isHostRestricted) {
-        socketListener.setHost(host);
+      if (config.jettyMaxThreads != null && config.jettyMaxThreads > 0) {
+        QueuedThreadPool pool = new QueuedThreadPool();
+        pool.setMaxThreads(config.jettyMaxThreads);
+        server = new Server(pool);
+      } else {
+        server = new Server();
       }
-      socketListener.setPort(port);
-      socketListener.setLowResourcesMaxIdleTime(6000);
-      server.addConnector(socketListener);
+
+      HttpConfiguration httpConfig = new HttpConfiguration();
+      httpConfig.setSecureScheme("https");
+      httpConfig.setSecurePort(config.port);
+
+      log.info("Will listen on " + config.port);
+
+      ServerConnector http = new ServerConnector(server, new HttpConnectionFactory(httpConfig));
+      http.setPort(config.port);
+
+      server.addConnector(http);
 
       ServletContextHandler root = new ServletContextHandler(ServletContextHandler.SESSIONS);
       root.setContextPath("/");
@@ -121,28 +163,7 @@ public class Hub {
 
       root.setAttribute(Registry.KEY, registry);
 
-      root.addServlet(DisplayHelpServlet.class.getName(), "/*");
-
-      root.addServlet(ConsoleServlet.class.getName(), "/grid/console/*");
-      root.addServlet(ConsoleServlet.class.getName(), "/grid/beta/console/*");
-      root.addServlet(org.openqa.grid.web.servlet.ConsoleServlet.class.getName(), "/grid/old/console/*");
-      root.addServlet(RegistrationServlet.class.getName(), "/grid/register/*");
-      // TODO remove at some point. Here for backward compatibility of
-      // tests etc.
-      root.addServlet(DriverServlet.class.getName(), "/grid/driver/*");
-      root.addServlet(DriverServlet.class.getName(), "/wd/hub/*");
-      root.addServlet(DriverServlet.class.getName(), "/selenium-server/driver/*");
-      root.addServlet(ResourceServlet.class.getName(), "/grid/resources/*");
-
-      root.addServlet(ProxyStatusServlet.class.getName(), "/grid/api/proxy/*");
-      root.addServlet(HubStatusServlet.class.getName(), "/grid/api/hub/*");
-      root.addServlet(TestSessionStatusServlet.class.getName(), "/grid/api/testsession/*");
-      root.addServlet(LifecycleServlet.class.getName(), "/lifecycle-manager/*");
-
-      // Selenium Grid 1.0 compatibility routes for older nodes trying to
-      // work with the newer hub.
-      root.addServlet(RegistrationServlet.class.getName(), "/registration-manager/register/*");
-      root.addServlet(Grid1HeartbeatServlet.class.getName(), "/heartbeat");
+      addDefaultServlets(root);
 
       // Load any additional servlets provided by the user.
       for (Map.Entry<String, Class<? extends Servlet>> entry : extraServlet.entrySet()) {
@@ -150,25 +171,16 @@ public class Hub {
       }
 
     } catch (Throwable e) {
-      throw new RuntimeException("Error initializing the hub" + e.getMessage(), e);
+      throw new RuntimeException("Error initializing the hub " + e.getMessage(), e);
     }
   }
 
-  public int getPort() {
-    return port;
-  }
-
-  public String getHost() {
-    return host;
+  public GridHubConfiguration getConfiguration() {
+    return config;
   }
 
   public void start() throws Exception {
     initServer();
-    if (maxThread>0){
-      QueuedThreadPool pool = new QueuedThreadPool();
-      pool.setMaxThreads(maxThread);
-      server.setThreadPool(pool);
-    }
     server.start();
   }
 
@@ -177,20 +189,30 @@ public class Hub {
   }
 
   public URL getUrl() {
+    return getUrl("");
+  }
+
+  public URL getUrl(String path) {
     try {
-      return new URL("http://" + getHost() + ":" + getPort());
+      return new URL("http://" + config.host + ":" + config.port + path);
     } catch (MalformedURLException e) {
       throw new RuntimeException(e.getMessage());
     }
   }
 
   public URL getRegistrationURL() {
-    String uri = "http://" + getHost() + ":" + getPort() + "/grid/register/";
-    try {
-      return new URL(uri);
-    } catch (MalformedURLException e) {
-      throw new RuntimeException(e);
-    }
+    return getUrl("/grid/register/");
+  }
+
+  /**
+   * @return URL one would use to request a new WebDriver session on this hub.
+   */
+  public URL getWebDriverHubRequestURL() {
+    return getUrl("/wd/hub");
+  }
+
+  public URL getConsoleURL() {
+    return getUrl("/grid/console");
   }
 
 }

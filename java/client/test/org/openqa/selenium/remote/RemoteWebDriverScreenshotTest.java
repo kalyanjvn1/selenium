@@ -21,7 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.openqa.selenium.OutputType.BASE64;
-import static org.openqa.selenium.testing.Ignore.Driver.HTMLUNIT;
+import static org.openqa.selenium.testing.Driver.HTMLUNIT;
 
 import org.junit.Test;
 import org.openqa.selenium.By;
@@ -34,6 +34,7 @@ import org.openqa.selenium.testing.drivers.WebDriverBuilder;
 
 @Ignore(HTMLUNIT)
 public class RemoteWebDriverScreenshotTest extends JUnit4TestBase {
+
   @Test
   public void testShouldBeAbleToGrabASnapshotOnException() {
     if (!(driver instanceof RemoteWebDriver)) {

@@ -17,47 +17,78 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require File.expand_path("../../spec_helper", __FILE__)
+require File.expand_path('../../spec_helper', __FILE__)
 
 module Selenium
   module WebDriver
     module Chrome
-
       describe Service do
-        let(:mock_process) do
-          double("ChildProcess", :io => double.as_null_object, :start => true)
+        let(:resp) { {'sessionId' => 'foo', 'value' => @default_capabilities} }
+        let(:service) { double(Service, start: true, uri: 'http://example.com') }
+        let(:caps) { {} }
+        let(:http) { double(Remote::Http::Default, call: resp).as_null_object }
+
+        before do
+          @default_capabilities = Remote::Capabilities.chrome.as_json
+          allow(Remote::Capabilities).to receive(:chrome).and_return(caps)
+          allow_any_instance_of(Service).to receive(:start)
+          allow_any_instance_of(Service).to receive(:binary_path)
         end
 
-        # ugh.
-        before { Service.instance_variable_set("@executable_path", nil) }
+        it 'does not start driver when receives url' do
+          expect(Service).not_to receive(:new)
+          expect(http).to receive(:server_url=).with(URI.parse('http://example.com:4321'))
 
-        it "uses the user-provided path if set" do
-          Platform.stub(:os => :unix)
-          Platform.stub(:assert_executable).with("/some/path")
-          Chrome.driver_path = "/some/path"
-
-          expect(ChildProcess).to receive(:build) do |*args|
-            args.first.should == "/some/path"
-            mock_process
-          end
-
-          Service.default_service.start_process
+          Bridge.new(http_client: http, url: 'http://example.com:4321')
         end
 
-        it "finds the Chrome server binary by searching PATH" do
-          Platform.stub(:os => :unix)
-          Platform.should_receive(:find_binary).once.and_return("/some/path")
-          Platform.should_receive(:assert_executable).with("/some/path")
+        it 'defaults to desired path and port' do
+          expect(Service).to receive(:new).with(Chrome.driver_path, Service::DEFAULT_PORT, {}).and_return(service)
 
-          Service.executable_path.should == "/some/path"
+          Bridge.new(http_client: http)
         end
 
-        it "raises a nice error if the server binary can't be found" do
-          Platform.stub(:find_binary).and_return(nil)
+        it 'accepts a driver path & port' do
+          path = '/foo/chromedriver'
+          port = '1234'
+          expect(Service).to receive(:new).with(path, '1234', {}).and_return(service)
 
-          lambda { Service.executable_path }.should raise_error(Error::WebDriverError, /github.com\/SeleniumHQ/)
+          Bridge.new(http_client: http, driver_path: path, port: port)
         end
 
+        it 'accepts driver options' do
+          driver_opts = {port_server: '2323',
+                         whitelisted_ips: ['192.168.0.1', '192.168.0.2'],
+                         silent: true,
+                         log_path: '/path/to/log'}
+
+          args = ["--log-path=#{driver_opts[:log_path]}",
+                  "--port-server=#{driver_opts[:port_server]}",
+                  "--whitelisted-ips=#{driver_opts[:whitelisted_ips]}",
+                  "--silent"]
+
+          bridge = Bridge.new(http_client: http, driver_opts: driver_opts)
+          expect(bridge.instance_variable_get("@service").instance_variable_get("@extra_args")).to eq args
+        end
+
+        it 'deprecates `service_args`' do
+          args = ["--port-server=2323",
+                  "--whitelisted-ips=['192.168.0.1', '192.168.0.2']",
+                  "--silent",
+                  "--log-path=/path/to/log"]
+
+          message = /\[DEPRECATION\] `:service_args` is deprecated. Pass switches using `driver_opts`/
+
+          expect { @bridge = Bridge.new(http_client: http, service_args: args) }.to output(message).to_stdout_from_any_process
+          expect(@bridge.instance_variable_get("@service").instance_variable_get("@extra_args")).to eq args
+        end
+
+        it 'deprecates `service_log_path`' do
+          message = /\[DEPRECATION\] `:service_log_path` is deprecated. Use `driver_opts: {log_path: \/path\/to\/log}`/
+
+          expect { @bridge = Bridge.new(http_client: http, service_log_path: "/path/to/log") }.to output(message).to_stdout_from_any_process
+          expect(@bridge.instance_variable_get("@service").instance_variable_get("@extra_args")).to eq ["--log-path=/path/to/log"]
+        end
       end
     end # Chrome
   end # WebDriver

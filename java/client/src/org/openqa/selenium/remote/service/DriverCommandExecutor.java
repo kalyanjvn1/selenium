@@ -53,6 +53,9 @@ public class DriverCommandExecutor extends HttpCommandExecutor {
   /**
    * Creates an {@link DriverCommandExecutor} that supports non-standard
    * {@code additionalCommands} in addition to the standard.
+   *
+   * @param service driver server
+   * @param additionalCommands additional commands the remote end can process
    */
   protected DriverCommandExecutor(
       DriverService service, Map<String, CommandInfo> additionalCommands) {
@@ -84,7 +87,7 @@ public class DriverCommandExecutor extends HttpCommandExecutor {
           !service.isRunning()) {
         throw new WebDriverException("The driver server has unexpectedly died!", t);
       }
-      Throwables.propagateIfPossible(t);
+      Throwables.throwIfUnchecked(t);
       throw new WebDriverException(t);
     } finally {
       if (DriverCommand.QUIT.equals(command.getName())) {

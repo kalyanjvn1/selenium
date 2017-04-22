@@ -37,7 +37,7 @@ public class SeleniumBasedResponse extends HttpServletResponseWrapper {
   }
 
   public String getForwardedContent() {
-    if (forwardedContent == null){
+    if (forwardedContent == null) {
       return null;
     }
     Charset charset = Charset.forName(encoding);
@@ -55,4 +55,7 @@ public class SeleniumBasedResponse extends HttpServletResponseWrapper {
     this.forwardedContent = forwardedContent;
   }
 
+  public byte[] getForwardedContentAsByteArray() {
+    return forwardedContent;
+  }
 }

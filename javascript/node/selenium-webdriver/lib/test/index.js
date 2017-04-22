@@ -20,12 +20,18 @@
 var assert = require('assert');
 
 var build = require('./build'),
-    webdriver = require('../..'),
+    isDevMode = require('../devmode'),
+    webdriver = require('../../'),
     flow = webdriver.promise.controlFlow(),
-    _base = require('../../_base'),
+    firefox = require('../../firefox'),
+    logging = require('../../lib/logging'),
+    safari = require('../../safari'),
     remote = require('../../remote'),
     testing = require('../../testing'),
     fileserver = require('./fileserver');
+
+
+const LEGACY_FIREFOX = 'legacy-' + webdriver.Browser.FIREFOX;
 
 
 /**
@@ -34,7 +40,9 @@ var build = require('./build'),
  */
 var NATIVE_BROWSERS = [
   webdriver.Browser.CHROME,
+  webdriver.Browser.EDGE,
   webdriver.Browser.FIREFOX,
+  LEGACY_FIREFOX,
   webdriver.Browser.IE,
   webdriver.Browser.OPERA,
   webdriver.Browser.PHANTOM_JS,
@@ -42,11 +50,18 @@ var NATIVE_BROWSERS = [
 ];
 
 
+var noBuild = /^1|true$/i.test(process.env['SELENIUM_NO_BUILD']);
 var serverJar = process.env['SELENIUM_SERVER_JAR'];
 var remoteUrl = process.env['SELENIUM_REMOTE_URL'];
+var useLoopback = process.env['SELENIUM_USE_LOOP_BACK'] == '1';
+var noMarionette = /^0|false$/i.test(process.env['SELENIUM_GECKODRIVER']);
 var startServer = !!serverJar && !remoteUrl;
 var nativeRun = !serverJar && !remoteUrl;
 
+if (/^1|true$/i.test(process.env['SELENIUM_VERBOSE'])) {
+  logging.installConsoleHandler();
+  logging.getLogger('webdriver.http').setLevel(logging.Level.ALL);
+}
 
 var browsersToTest = (function() {
   var permitRemoteBrowsers = !!remoteUrl || !!serverJar;
@@ -58,12 +73,23 @@ var browsersToTest = (function() {
     if (parts[0] === 'ie') {
       parts[0] = webdriver.Browser.IE;
     }
+    if (parts[0] === 'edge') {
+      parts[0] = webdriver.Browser.EDGE;
+    }
+    if (noMarionette && parts[0] === webdriver.Browser.FIREFOX) {
+      parts[0] = LEGACY_FIREFOX;
+    }
     return parts.join(':');
   });
+
   browsers.forEach(function(browser) {
     var parts = browser.split(/:/, 3);
     if (parts[0] === 'ie') {
       parts[0] = webdriver.Browser.IE;
+    }
+
+    if (parts[0] === LEGACY_FIREFOX) {
+      return;
     }
 
     if (NATIVE_BROWSERS.indexOf(parts[0]) == -1 && !permitRemoteBrowsers) {
@@ -91,7 +117,12 @@ var browsersToTest = (function() {
     console.log('Using remote server ' + remoteUrl);
   } else if (serverJar) {
     console.log('Using standalone Selenium server ' + serverJar);
+    if (useLoopback) {
+      console.log('Running tests using loopback address')
+    }
   }
+  console.log(
+      'Promise manager is enabled? ' + webdriver.promise.USE_PROMISE_MANAGER);
 
   return browsers;
 })();
@@ -126,6 +157,10 @@ function TestEnvironment(browserName, server) {
     return server || remoteUrl;
   };
 
+  this.isMarionette = function() {
+    return !noMarionette;
+  };
+
   this.browsers = function(var_args) {
     var browsersToIgnore = Array.prototype.slice.apply(arguments, [0]);
     return browsers(browserName, browsersToIgnore);
@@ -137,12 +172,22 @@ function TestEnvironment(browserName, server) {
 
     builder.build = function() {
       var parts = browserName.split(/:/, 3);
+
+      if (parts[0] === LEGACY_FIREFOX) {
+        var options = builder.getFirefoxOptions() || new firefox.Options();
+        options.useGeckoDriver(false);
+        builder.setFirefoxOptions(options);
+
+        parts[0] = webdriver.Browser.FIREFOX;
+      }
+
       builder.forBrowser(parts[0], parts[1], parts[2]);
       if (server) {
         builder.usingServer(server.address());
       } else if (remoteUrl) {
         builder.usingServer(remoteUrl);
       }
+
       builder.disableEnvironmentOverrides();
       return realBuild.call(builder);
     };
@@ -180,25 +225,29 @@ function suite(fn, opt_options) {
 
   try {
 
+    before(function() {
+      if (isDevMode && !noBuild) {
+        return build.of(
+            '//javascript/atoms/fragments:is-displayed',
+            '//javascript/webdriver/atoms:getAttribute')
+            .onlyOnce().go();
+      }
+    });
+
     // Server is only started if required for a specific config.
-    testing.after(function() {
+    after(function() {
       if (seleniumServer) {
         return seleniumServer.stop();
       }
     });
 
     browsers.forEach(function(browser) {
-      testing.describe('[' + browser + ']', function() {
+      describe('[' + browser + ']', function() {
 
-        if (_base.isDevMode() && nativeRun) {
-          if (browser === webdriver.Browser.FIREFOX) {
-            testing.before(function() {
+        if (isDevMode && nativeRun) {
+          if (browser === LEGACY_FIREFOX) {
+            before(function() {
               return build.of('//javascript/firefox-driver:webdriver')
-                  .onlyOnce().go();
-            });
-          } else if (browser === webdriver.Browser.SAFARI) {
-            testing.before(function() {
-              return build.of('//javascript/safari-driver:client')
                   .onlyOnce().go();
             });
           }
@@ -208,10 +257,11 @@ function suite(fn, opt_options) {
 
         if (!!serverJar && !remoteUrl) {
           if (!(serverToUse = seleniumServer)) {
-            serverToUse = seleniumServer = new remote.SeleniumServer(serverJar);
+            serverToUse = seleniumServer = new remote.SeleniumServer(
+                serverJar, {loopback: useLoopback});
           }
 
-          testing.before(function() {
+          before(function() {
             this.timeout(0);
             return seleniumServer.start(60 * 1000);
           });
@@ -227,14 +277,14 @@ function suite(fn, opt_options) {
 
 // GLOBAL TEST SETUP
 
-testing.before(function() {
+before(function() {
    // Do not pass register fileserver.start directly with testing.before,
    // as start takes an optional port, which before assumes is an async
    // callback.
    return fileserver.start();
 });
 
-testing.after(function() {
+after(function() {
    return fileserver.stop();
 });
 

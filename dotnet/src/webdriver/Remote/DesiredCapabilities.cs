@@ -19,12 +19,11 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Newtonsoft.Json;
 
 namespace OpenQA.Selenium.Remote
 {
     /// <summary>
-    /// Class to Create the capabilities of the browser you require for <see cref="IWebDriver"/>. 
+    /// Class to Create the capabilities of the browser you require for <see cref="IWebDriver"/>.
     /// If you wish to use default values use the static methods
     /// </summary>
     public class DesiredCapabilities : ICapabilities
@@ -32,7 +31,7 @@ namespace OpenQA.Selenium.Remote
         private readonly Dictionary<string, object> capabilities = new Dictionary<string, object>();
 
         /// <summary>
-        /// Initializes a new instance of the DesiredCapabilities class
+        /// Initializes a new instance of the <see cref="DesiredCapabilities"/> class
         /// </summary>
         /// <param name="browser">Name of the browser e.g. firefox, internet explorer, safari</param>
         /// <param name="version">Version of the browser</param>
@@ -45,14 +44,14 @@ namespace OpenQA.Selenium.Remote
         }
 
         /// <summary>
-        /// Initializes a new instance of the DesiredCapabilities class
+        /// Initializes a new instance of the <see cref="DesiredCapabilities"/> class
         /// </summary>
         public DesiredCapabilities()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the DesiredCapabilities class
+        /// Initializes a new instance of the <see cref="DesiredCapabilities"/> class
         /// </summary>
         /// <param name="rawMap">Dictionary of items for the remote driver</param>
         /// <example>
@@ -73,18 +72,7 @@ namespace OpenQA.Selenium.Remote
                         Platform rawAsPlatform = raw as Platform;
                         if (rawAsString != null)
                         {
-                            PlatformType platformInfo = PlatformType.Any;
-                            try
-                            {
-                                platformInfo = (PlatformType)Enum.Parse(typeof(PlatformType), rawAsString, true);
-                            }
-                            catch (ArgumentException)
-                            {
-                                // If the server does not pass back a valid platform type, ignore it and
-                                // use PlatformType.Any.
-                            }
-
-                            this.capabilities[CapabilityType.Platform] = new Platform(platformInfo);
+                            this.SetCapability(CapabilityType.Platform, Platform.FromString(rawAsString));
                         }
                         else if (rawAsPlatform != null)
                         {
@@ -100,11 +88,11 @@ namespace OpenQA.Selenium.Remote
         }
 
         /// <summary>
-        /// Gets the browser name 
+        /// Gets the browser name
         /// </summary>
         public string BrowserName
         {
-            get 
+            get
             {
                 string name = string.Empty;
                 object capabilityValue = this.GetCapability(CapabilityType.BrowserName);
@@ -122,11 +110,11 @@ namespace OpenQA.Selenium.Remote
         /// </summary>
         public Platform Platform
         {
-            get 
+            get
             {
                 return this.GetCapability(CapabilityType.Platform) as Platform ?? new Platform(PlatformType.Any);
             }
-            
+
             set
             {
                 this.SetCapability(CapabilityType.Platform, value);
@@ -138,7 +126,7 @@ namespace OpenQA.Selenium.Remote
         /// </summary>
         public string Version
         {
-            get 
+            get
             {
                 string browserVersion = string.Empty;
                 object capabilityValue = this.GetCapability(CapabilityType.Version);
@@ -154,9 +142,10 @@ namespace OpenQA.Selenium.Remote
         /// <summary>
         /// Gets or sets a value indicating whether the browser is JavaScript enabled
         /// </summary>
+        [Obsolete("Capability is not allowed by the W3C specification, and will be removed in a future version of the bindings.")]
         public bool IsJavaScriptEnabled
         {
-            get 
+            get
             {
                 bool javascriptEnabled = false;
                 object capabilityValue = this.GetCapability(CapabilityType.IsJavaScriptEnabled);
@@ -168,16 +157,39 @@ namespace OpenQA.Selenium.Remote
                 return javascriptEnabled;
             }
 
-            set 
+            set
             {
                 this.SetCapability(CapabilityType.IsJavaScriptEnabled, value);
             }
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the browser accepts SSL certificates.
+        /// </summary>
+        public bool AcceptInsecureCerts
+        {
+            get
+            {
+              bool acceptSSLCerts = false;
+              object capabilityValue = this.GetCapability(CapabilityType.AcceptInsecureCertificates);
+              if (capabilityValue != null)
+              {
+                acceptSSLCerts = (bool)capabilityValue;
+              }
+
+              return acceptSSLCerts;
+            }
+
+            set
+            {
+                this.SetCapability(CapabilityType.AcceptInsecureCertificates, value);
+            }
+        }
+
+        /// <summary>
         /// Gets the internal capabilities dictionary.
         /// </summary>
-        internal Dictionary<string, object> Capabilities
+        internal Dictionary<string, object> CapabilitiesDictionary
         {
             get { return this.capabilities; }
         }
@@ -188,7 +200,9 @@ namespace OpenQA.Selenium.Remote
         /// <returns>New instance of DesiredCapabilities for use with Firefox</returns>
         public static DesiredCapabilities Firefox()
         {
-            return new DesiredCapabilities("firefox", string.Empty, new Platform(PlatformType.Any));
+            DesiredCapabilities dc = new DesiredCapabilities("firefox", string.Empty, new Platform(PlatformType.Any));
+            dc.AcceptInsecureCerts = true;
+            return dc;
         }
 
         /// <summary>
@@ -226,7 +240,7 @@ namespace OpenQA.Selenium.Remote
         {
             return new DesiredCapabilities("htmlunit", string.Empty, new Platform(PlatformType.Any));
         }
-        
+
         /// <summary>
         /// Method to return a new DesiredCapabilities using defaults
         /// </summary>
@@ -292,7 +306,7 @@ namespace OpenQA.Selenium.Remote
         /// <returns>New instance of DesiredCapabilities for use with Safari</returns>
         public static DesiredCapabilities Safari()
         {
-            return new DesiredCapabilities("safari", string.Empty, new Platform(PlatformType.Any));
+            return new DesiredCapabilities("safari", string.Empty, new Platform(PlatformType.Mac));
         }
 
         /// <summary>
@@ -317,6 +331,11 @@ namespace OpenQA.Selenium.Remote
             if (this.capabilities.ContainsKey(capability))
             {
                 capabilityValue = this.capabilities[capability];
+                string capabilityValueString = capabilityValue as string;
+                if (capability == CapabilityType.Platform && capabilityValueString != null)
+                {
+                    capabilityValue = Platform.FromString(capabilityValue.ToString());
+                }
             }
 
             return capabilityValue;
@@ -329,7 +348,29 @@ namespace OpenQA.Selenium.Remote
         /// <param name="capabilityValue">The value for the capability.</param>
         public void SetCapability(string capability, object capabilityValue)
         {
-            this.capabilities[capability] = capabilityValue;
+            // Handle the special case of Platform objects. These should
+            // be stored in the underlying dictionary as their protocol
+            // string representation.
+            Platform platformCapabilityValue = capabilityValue as Platform;
+            if (platformCapabilityValue != null)
+            {
+                this.capabilities[capability] = platformCapabilityValue.ProtocolPlatformType;
+            }
+            else
+            {
+                this.capabilities[capability] = capabilityValue;
+            }
+        }
+
+        /// <summary>
+        /// Converts the <see cref="ICapabilities"/> object to a <see cref="Dictionary{TKey, TValue}"/>.
+        /// </summary>
+        /// <returns>The <see cref="Dictionary{TKey, TValue}"/> containing the capabilities.</returns>
+        public Dictionary<string, object> ToDictionary()
+        {
+            // CONSIDER: Instead of returning the raw internal member,
+            // we might want to copy/clone it instead.
+            return this.capabilities;
         }
 
         /// <summary>

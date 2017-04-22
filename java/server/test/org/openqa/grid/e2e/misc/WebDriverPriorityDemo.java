@@ -19,8 +19,8 @@ package org.openqa.grid.e2e.misc;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.openqa.grid.common.GridRole;
 import org.openqa.grid.e2e.utils.GridTestHelper;
@@ -32,6 +32,7 @@ import org.openqa.grid.web.Hub;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.remote.server.SeleniumServer;
 
 import java.net.URL;
 import java.util.Map;
@@ -41,24 +42,24 @@ import java.util.Map;
  */
 public class WebDriverPriorityDemo {
 
-  private static Hub hub = null;
-  private static Registry registry = null;
+  private Hub hub = null;
+  private Registry registry = null;
 
-  private static SelfRegisteringRemote remote = null;
+  private SelfRegisteringRemote remote = null;
 
-  private static URL hubURL = null;
-  private static URL driverURL = null;
-  private static URL consoleURL = null;
+  private URL hubURL = null;
+  private URL driverURL = null;
+  private URL consoleURL = null;
 
-  static WebDriver runningOne = null;
-  volatile static WebDriver importantOne = null;
-  volatile static boolean importantOneStarted = false;
+  private WebDriver runningOne = null;
+  private volatile WebDriver importantOne = null;
+  private volatile boolean importantOneStarted = false;
 
-  private static DesiredCapabilities browser = null;
-  private static DesiredCapabilities important_browser = null;
+  private DesiredCapabilities browser = null;
+  private DesiredCapabilities important_browser = null;
 
-  @BeforeClass
-  public static void prepare() throws Exception {
+  @Before
+  public void prepare() throws Exception {
 
     // start a small grid that only has 1 testing slot : htmlunit
 
@@ -66,11 +67,11 @@ public class WebDriverPriorityDemo {
     registry = hub.getRegistry();
 
     hubURL = hub.getUrl();
-    driverURL = new URL(hubURL + "/grid/driver");
-    consoleURL = new URL(hubURL + "/grid/old/console");
+    driverURL = hub.getWebDriverHubRequestURL();
+    consoleURL = hub.getConsoleURL();
 
     // assigning a priority rule where requests with the flag "important" go first.
-    registry.setPrioritizer(new Prioritizer() {
+    registry.getConfiguration().prioritizer = new Prioritizer() {
       public int compareTo(Map<String, Object> a, Map<String, Object> b) {
         boolean aImportant =
             a.get("_important") == null ? false : Boolean.parseBoolean(a.get("_important")
@@ -83,11 +84,10 @@ public class WebDriverPriorityDemo {
         }
         if (aImportant && !bImportant) {
           return -1;
-        } else {
-          return 1;
         }
+        return 1;
       }
-    });
+    };
 
     // initialize node
 
@@ -98,6 +98,7 @@ public class WebDriverPriorityDemo {
     remote = GridTestHelper.getRemoteWithoutCapabilities(hubURL, GridRole.NODE);
     remote.addBrowser(browser, 1);
 
+    remote.setRemoteServer(new SeleniumServer(remote.getConfiguration()));
     remote.startRemoteServer();
     remote.setMaxConcurrent(1);
     remote.setTimeout(-1, -1);
@@ -205,13 +206,13 @@ public class WebDriverPriorityDemo {
   }
 
   // simple helper
-  static private void visitHubConsole(WebDriver driver) {
+  private void visitHubConsole(WebDriver driver) {
     driver.get(consoleURL.toString());
-    assertEquals(driver.getTitle(), "Grid overview");
+    assertEquals(driver.getTitle(), "Grid Console");
   }
 
-  @AfterClass
-  public static void stop() throws Exception {
+  @After
+  public void stop() throws Exception {
     if (remote != null) {
       remote.stopRemoteServer();
     }

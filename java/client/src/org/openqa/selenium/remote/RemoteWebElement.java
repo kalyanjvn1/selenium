@@ -24,6 +24,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.Point;
+import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
@@ -52,11 +53,9 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
                                          FindsByTagName, FindsByClassName, FindsByCssSelector,
                                          FindsByXPath, WrapsDriver, Locatable, HasIdentity,
                                          TakesScreenshot {
-
   private String foundBy;
   protected String id;
   protected RemoteWebDriver parent;
-  protected RemoteMouse mouse;
   protected FileDetector fileDetector;
 
   protected void setFoundBy(SearchContext foundFrom, String locator, String term) {
@@ -65,7 +64,6 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
 
   public void setParent(RemoteWebDriver parent) {
     this.parent = parent;
-    mouse = (RemoteMouse) parent.getMouse();
   }
 
   public String getId() {
@@ -90,14 +88,12 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
 
   public void sendKeys(CharSequence... keysToSend) {
     File localFile = fileDetector.getLocalFile(keysToSend);
-    if (localFile == null) {
-      execute(DriverCommand.SEND_KEYS_TO_ELEMENT, ImmutableMap.of("id", id, "value", keysToSend));
-      return;
+    if (localFile != null) {
+      String remotePath = upload(localFile);
+      keysToSend = new CharSequence[]{remotePath};
     }
 
-    String remotePath = upload(localFile);
-    CharSequence[] keys = new CharSequence[]{remotePath};
-    execute(DriverCommand.SEND_KEYS_TO_ELEMENT, ImmutableMap.of("id", id, "value", keys));
+    execute(DriverCommand.SEND_KEYS_TO_ELEMENT, ImmutableMap.of("id", id, "value", keysToSend));
   }
 
   private String upload(File localFile) {
@@ -106,7 +102,7 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
     }
 
     try {
-      String zip = new Zip().zipFile(localFile.getParentFile(), localFile);
+      String zip = Zip.zip(localFile);
       Response response = execute(DriverCommand.UPLOAD_FILE, ImmutableMap.of("file", zip));
       return (String) response.getValue();
     } catch (IOException e) {
@@ -124,13 +120,16 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
   }
 
   public String getAttribute(String name) {
-    Object value =
+    return stringValueOf(
         execute(DriverCommand.GET_ELEMENT_ATTRIBUTE, ImmutableMap.of("id", id, "name", name))
-            .getValue();
-    if (value == null) {
+        .getValue());
+  }
+
+  private static String stringValueOf(Object o) {
+    if (o == null) {
       return null;
     }
-    return String.valueOf(value);
+    return String.valueOf(o);
   }
 
   public boolean isSelected() {
@@ -322,8 +321,7 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
 
   @SuppressWarnings({"unchecked"})
   public Point getLocation() {
-    Response response =
-        execute(DriverCommand.GET_ELEMENT_LOCATION, ImmutableMap.of("id", id));
+    Response response = execute(DriverCommand.GET_ELEMENT_LOCATION, ImmutableMap.of("id", id));
     Map<String, Object> rawPoint = (Map<String, Object>) response.getValue();
     int x = ((Number) rawPoint.get("x")).intValue();
     int y = ((Number) rawPoint.get("y")).intValue();
@@ -339,6 +337,16 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
     return new Dimension(width, height);
   }
 
+  public Rectangle getRect() {
+    Response response = execute(DriverCommand.GET_ELEMENT_RECT, ImmutableMap.of("id", id));
+    Map<String, Object> rawRect = (Map<String, Object>) response.getValue();
+    int x = ((Number) rawRect.get("x")).intValue();
+    int y = ((Number) rawRect.get("y")).intValue();
+    int width = ((Number) rawRect.get("width")).intValue();
+    int height = ((Number) rawRect.get("height")).intValue();
+    return new Rectangle(x, y, height, width);
+  }
+
   public Coordinates getCoordinates() {
     return new Coordinates() {
 
@@ -348,11 +356,10 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
 
       public Point inViewPort() {
         Response response = execute(DriverCommand.GET_ELEMENT_LOCATION_ONCE_SCROLLED_INTO_VIEW,
-            ImmutableMap.of("id", getId()));
+                                    ImmutableMap.of("id", getId()));
 
         @SuppressWarnings("unchecked")
         Map<String, Number> mapped = (Map<String, Number>) response.getValue();
-
         return new Point(mapped.get("x").intValue(), mapped.get("y").intValue());
       }
 
@@ -388,5 +395,11 @@ public class RemoteWebElement implements WebElement, FindsByLinkText, FindsById,
       return String.format("[%s -> unknown locator]", super.toString());
     }
     return String.format("[%s]", foundBy);
+  }
+
+  public Map<String, Object> toJson() {
+    return ImmutableMap.of(
+        Dialect.OSS.getEncodedElementKey(), getId(),
+        Dialect.W3C.getEncodedElementKey(), getId());
   }
 }

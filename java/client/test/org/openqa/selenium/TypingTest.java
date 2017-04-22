@@ -24,34 +24,25 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assume.assumeFalse;
-import static org.junit.Assume.assumeTrue;
 import static org.openqa.selenium.WaitingConditions.elementValueToEqual;
-import static org.openqa.selenium.testing.Ignore.Driver.ALL;
-import static org.openqa.selenium.testing.Ignore.Driver.FIREFOX;
-import static org.openqa.selenium.testing.Ignore.Driver.HTMLUNIT;
-import static org.openqa.selenium.testing.Ignore.Driver.IE;
-import static org.openqa.selenium.testing.Ignore.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Ignore.Driver.PHANTOMJS;
-import static org.openqa.selenium.testing.Ignore.Driver.SAFARI;
+import static org.openqa.selenium.testing.Driver.IE;
+import static org.openqa.selenium.testing.Driver.MARIONETTE;
+import static org.openqa.selenium.testing.Driver.PHANTOMJS;
+import static org.openqa.selenium.testing.Driver.SAFARI;
 import static org.openqa.selenium.testing.TestUtilities.getEffectivePlatform;
 import static org.openqa.selenium.testing.TestUtilities.getFirefoxVersion;
 import static org.openqa.selenium.testing.TestUtilities.isFirefox;
-import static org.openqa.selenium.testing.TestUtilities.isNativeEventsEnabled;
-
-import org.junit.Test;
-import org.openqa.selenium.remote.CapabilityType;
-import org.openqa.selenium.testing.Ignore;
-import org.openqa.selenium.testing.JUnit4TestBase;
-import org.openqa.selenium.testing.JavascriptEnabled;
-import org.openqa.selenium.testing.NotYetImplemented;
-import org.openqa.selenium.testing.drivers.Browser;
 
 import com.google.common.base.Joiner;
 
+import org.junit.Test;
+import org.openqa.selenium.testing.Ignore;
+import org.openqa.selenium.testing.JUnit4TestBase;
+import org.openqa.selenium.testing.NotYetImplemented;
+import org.openqa.selenium.testing.drivers.Browser;
+
 public class TypingTest extends JUnit4TestBase {
 
-  @JavascriptEnabled
-  @Ignore(MARIONETTE)
   @Test
   public void testShouldFireKeyPressEvents() {
     driver.get(pages.javascriptPage);
@@ -63,9 +54,7 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), containsString("press:"));
   }
 
-  @JavascriptEnabled
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldFireKeyDownEvents() {
     driver.get(pages.javascriptPage);
 
@@ -76,9 +65,7 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), containsString("down:"));
   }
 
-  @JavascriptEnabled
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldFireKeyUpEvents() {
     driver.get(pages.javascriptPage);
 
@@ -90,7 +77,6 @@ public class TypingTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldTypeLowerCaseLetters() {
     driver.get(pages.javascriptPage);
 
@@ -101,7 +87,6 @@ public class TypingTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldBeAbleToTypeCapitalLetters() {
     driver.get(pages.javascriptPage);
 
@@ -112,7 +97,6 @@ public class TypingTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldBeAbleToTypeQuoteMarks() {
     driver.get(pages.javascriptPage);
 
@@ -123,7 +107,6 @@ public class TypingTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldBeAbleToTypeTheAtCharacter() {
     // simon: I tend to use a US/UK or AUS keyboard layout with English
     // as my primary language. There are consistent reports that we're
@@ -140,7 +123,6 @@ public class TypingTest extends JUnit4TestBase {
   }
 
   @Test
-  @Ignore(MARIONETTE)
   public void testShouldBeAbleToMixUpperAndLowerCaseLetters() {
     driver.get(pages.javascriptPage);
 
@@ -150,8 +132,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(keyReporter.getAttribute("value"), is("me@eXample.com"));
   }
 
-  @JavascriptEnabled
-  @Ignore({MARIONETTE})
   @Test
   public void testArrowKeysShouldNotBePrintable() {
     driver.get(pages.javascriptPage);
@@ -162,8 +142,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(keyReporter.getAttribute("value"), is(""));
   }
 
-  @Ignore(MARIONETTE)
-  @NotYetImplemented(HTMLUNIT)
   @Test
   public void testShouldBeAbleToUseArrowKeys() {
     driver.get(pages.javascriptPage);
@@ -174,7 +152,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(keyReporter.getAttribute("value"), is("test"));
   }
 
-  @JavascriptEnabled
   @Test
   public void testWillSimulateAKeyUpWhenEnteringTextIntoInputElements() {
     driver.get(pages.javascriptPage);
@@ -186,7 +163,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), equalTo("I like cheese"));
   }
 
-  @JavascriptEnabled
   @Test
   public void testWillSimulateAKeyDownWhenEnteringTextIntoInputElements() {
     driver.get(pages.javascriptPage);
@@ -200,7 +176,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), equalTo("I like chees"));
   }
 
-  @JavascriptEnabled
   @Test
   public void testWillSimulateAKeyPressWhenEnteringTextIntoInputElements() {
     driver.get(pages.javascriptPage);
@@ -214,7 +189,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), equalTo("I like chees"));
   }
 
-  @JavascriptEnabled
   @Test
   public void testWillSimulateAKeyUpWhenEnteringTextIntoTextAreas() {
     driver.get(pages.javascriptPage);
@@ -226,7 +200,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), equalTo("I like cheese"));
   }
 
-  @JavascriptEnabled
   @Test
   public void testWillSimulateAKeyDownWhenEnteringTextIntoTextAreas() {
     driver.get(pages.javascriptPage);
@@ -240,7 +213,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), equalTo("I like chees"));
   }
 
-  @JavascriptEnabled
   @Test
   public void testWillSimulateAKeyPressWhenEnteringTextIntoTextAreas() {
     driver.get(pages.javascriptPage);
@@ -254,11 +226,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText(), equalTo("I like chees"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {FIREFOX, IE, MARIONETTE},
-          reason = "firefox specific not yet tested in htmlunit. Firefox demands to have the "
-                   + "focus on the window already.")
   @Test
+  @Ignore(IE)
   public void testShouldFireFocusKeyEventsInTheRightOrder() {
     driver.get(pages.javascriptPage);
 
@@ -275,10 +244,9 @@ public class TypingTest extends JUnit4TestBase {
                      is(String.format("down: %1$d up: %1$d", expectedKeyCode))));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {IE, PHANTOMJS, MARIONETTE})
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @Ignore(IE)
+  @Ignore(PHANTOMJS)
   public void testShouldReportKeyCodeOfArrowKeys() {
     assumeFalse(Browser.detect() == Browser.opera &&
                 getEffectivePlatform().is(Platform.WINDOWS));
@@ -304,10 +272,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is(""));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE,
-          reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
   public void testShouldReportKeyCodeOfArrowKeysUpDownEvents() {
     assumeFalse(Browser.detect() == Browser.opera &&
@@ -338,8 +302,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is(""));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {MARIONETTE}, reason = "untested user agent")
   @Test
   public void testNumericNonShiftKeys() {
     driver.get(pages.javascriptPage);
@@ -352,10 +314,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is(numericLineCharsNonShifted));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agent")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/646")
   public void testNumericShiftKeys() {
     driver.get(pages.javascriptPage);
 
@@ -369,8 +329,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText().trim(), containsString(" up: 16"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {MARIONETTE}, reason = "untested user agent")
   @Test
   public void testLowerCaseAlphaKeys() {
     driver.get(pages.javascriptPage);
@@ -383,10 +341,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is(lowerAlphas));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/646")
   public void testUppercaseAlphaKeys() {
     driver.get(pages.javascriptPage);
 
@@ -400,10 +356,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText().trim(), containsString(" up: 16"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/646")
   public void testAllPrintableKeys() {
     driver.get(pages.javascriptPage);
 
@@ -419,8 +373,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText().trim(), containsString(" up: 16"));
   }
 
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
   public void testArrowKeysAndPageUpAndDown() {
     driver.get(pages.javascriptPage);
@@ -432,9 +384,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("ba1"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
   public void testHomeAndEndAndPageUpAndPageDownKeys() {
     assumeFalse("FIXME: macs don't have HOME keys, would PGUP work?",
@@ -450,9 +399,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("0000abc1111"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
   public void testDeleteAndBackspaceKeys() {
     driver.get(pages.javascriptPage);
@@ -469,10 +415,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("abcdfgi"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @NotYetImplemented(value = MARIONETTE)
   public void testSpecialSpaceKeys() {
     driver.get(pages.javascriptPage);
 
@@ -482,11 +426,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("abcd fgh ij"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE,
-          reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @NotYetImplemented(value = MARIONETTE)
   public void testNumberpadKeys() {
     driver.get(pages.javascriptPage);
 
@@ -499,10 +440,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("abcd*-+.,09+;=/3abcd"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {IE, MARIONETTE},
-          reason = "untested user agents, IE: F4 triggers address bar")
   @Test
+  @Ignore(value = IE, reason = "F4 triggers address bar")
   public void testFunctionKeys() {
     driver.get(pages.javascriptPage);
 
@@ -513,12 +452,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("FUNCTION-KEYS-TOO"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {SAFARI, MARIONETTE},
-          reason = "untested user agents; Safari: issue 4221",
-          issues = {4221})
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @Ignore(value = SAFARI, reason = "issue 4221")
   public void testShiftSelectionDeletes() {
     driver.get(pages.javascriptPage);
 
@@ -532,10 +467,9 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("abcd e"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @Ignore(MARIONETTE)
+  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/646")
   public void testChordControlHomeShiftEndDelete() {
     assumeFalse("FIXME: macs don't have HOME keys, would PGUP work?",
                 getEffectivePlatform().is(Platform.MAC));
@@ -555,10 +489,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is(""));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/646")
   public void testChordReveseShiftHomeSelectionDeletes() {
     assumeFalse("FIXME: macs don't have HOME keys, would PGUP work?",
                 getEffectivePlatform().is(Platform.MAC));
@@ -589,17 +521,11 @@ public class TypingTest extends JUnit4TestBase {
   // control-x control-v here for cut & paste tests, these work on windows
   // and linux, but not on the MAC.
 
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, reason = "untested user agents")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @NotYetImplemented(value = MARIONETTE, reason = "https://github.com/mozilla/geckodriver/issues/646")
   public void testChordControlCutAndPaste() {
     assumeFalse("FIXME: macs don't have HOME keys, would PGUP work?",
                 getEffectivePlatform().is(Platform.MAC));
-    assumeFalse("FIXME: Fails in Firefox on Linux with native events",
-                isFirefox(driver) &&
-                isNativeEventsEnabled(driver) &&
-                getEffectivePlatform().is(Platform.LINUX));
 
     driver.get(pages.javascriptPage);
 
@@ -642,7 +568,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is(""));
   }
 
-  @JavascriptEnabled
   @Test
   public void testShouldTypeIntoInputElementsThatHaveNoTypeAttribute() {
     driver.get(pages.formPage);
@@ -653,8 +578,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(element.getAttribute("value"), is("should say cheese"));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {MARIONETTE}, reason = "untested user agents")
   @Test
   public void testShouldNotTypeIntoElementsThatPreventKeyDownEvents() {
     driver.get(pages.javascriptPage);
@@ -665,14 +588,10 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(silent.getAttribute("value"), is(""));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = PHANTOMJS,
-          reason = "HtmlUnit: failure, others: not tested")
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @Ignore(PHANTOMJS)
   public void testGenerateKeyPressEventEvenWhenElementPreventsDefault() {
     assumeFalse(isFirefox(driver) && getFirefoxVersion(driver) < 25);
-    assumeTrue(((HasCapabilities)driver).getCapabilities().is(CapabilityType.HAS_NATIVE_EVENTS));
     driver.get(pages.javascriptPage);
 
     WebElement silent = driver.findElement(By.name("suppress"));
@@ -682,52 +601,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(result.getText().trim(), is(""));
   }
 
-  @JavascriptEnabled
-  @Ignore(value = {SAFARI, MARIONETTE},
-      reason = "Safari: cannot type on contentEditable with synthetic events")
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
-  @Test
-  public void testTypingIntoAnIFrameWithContentEditableOrDesignModeSet() {
-    driver.get(pages.richTextPage);
-
-    driver.switchTo().frame("editFrame");
-    WebElement element = driver.switchTo().activeElement();
-    element.sendKeys("Fishy");
-
-    driver.switchTo().defaultContent();
-    WebElement trusted = driver.findElement(By.id("istrusted"));
-    WebElement id = driver.findElement(By.id("tagId"));
-
-    assertThat(trusted.getText(), anyOf(
-        equalTo("[true]"),
-        // Chrome does not set a trusted flag.
-        equalTo("[n/a]"),
-        equalTo("[]")));
-    assertThat(id.getText(), anyOf(equalTo("[frameHtml]"), equalTo("[theBody]")));
-  }
-
-  @JavascriptEnabled
-  @Ignore(value = MARIONETTE, issues = {6711})
-  @NotYetImplemented(HTMLUNIT)
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
-  @Test
-  public void testNonPrintableCharactersShouldWorkWithContentEditableOrDesignModeSet() {
-    assumeFalse("FIXME: Fails in Firefox on Linux with synthesized events",
-                isFirefox(driver) &&
-                !isNativeEventsEnabled(driver) &&
-                (getEffectivePlatform().is(Platform.LINUX) || getEffectivePlatform().is(Platform.MAC)));
-
-    driver.get(pages.richTextPage);
-
-    driver.switchTo().frame("editFrame");
-    WebElement element = driver.switchTo().activeElement();
-    element.sendKeys("Dishy", Keys.BACK_SPACE, Keys.LEFT, Keys.LEFT);
-    element.sendKeys(Keys.LEFT, Keys.LEFT, "F", Keys.DELETE, Keys.END, "ee!");
-
-    assertEquals("Fishee!", element.getText());
-  }
-
-  @JavascriptEnabled
   @Test
   public void testShouldBeAbleToTypeOnAnEmailInputField() {
     driver.get(pages.formPage);
@@ -736,7 +609,6 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(email.getAttribute("value"), equalTo("foobar"));
   }
 
-  @Ignore(value = HTMLUNIT, reason = "inconsistent test")
   @Test
   public void testShouldBeAbleToTypeOnANumberInputField() {
     driver.get(pages.formPage);
@@ -745,56 +617,8 @@ public class TypingTest extends JUnit4TestBase {
     assertThat(email.getAttribute("value"), equalTo("33"));
   }
 
-  @Ignore(value = {SAFARI, MARIONETTE}, reason = "Untested browsers;" +
-      " Safari: cannot type on contentEditable with synthetic events",
-      issues = {3127})
-  @NotYetImplemented(HTMLUNIT)
   @Test
-  public void testShouldBeAbleToTypeIntoEmptyContentEditableElement() {
-    driver.get(pages.readOnlyPage);
-    WebElement editable = driver.findElement(By.id("content-editable"));
-
-    editable.clear();
-    editable.sendKeys("cheese"); // requires focus on OS X
-
-    assertThat(editable.getText(), equalTo("cheese"));
-  }
-
-  @Ignore(value = {ALL}, reason = "Untested except in Firefox", issues = {2825})
-  @Test
-  public void testShouldBeAbleToTypeIntoContentEditableElementWithExistingValue() {
-    driver.get(pages.readOnlyPage);
-    WebElement editable = driver.findElement(By.id("content-editable"));
-
-    String initialText = editable.getText();
-    editable.sendKeys(", edited");
-
-    assertThat(editable.getText(), equalTo(initialText + ", edited"));
-  }
-
-  @Ignore(value = {IE, SAFARI, MARIONETTE},
-          reason = "Untested browsers;" +
-                   " Safari: cannot type on contentEditable with synthetic events",
-          issues = {3127})
-  @NotYetImplemented(HTMLUNIT)
-  @NoDriverAfterTest // So that next test never starts with "inside a frame" base state.
-  @Test
-  public void testShouldBeAbleToTypeIntoTinyMCE() {
-    driver.get(appServer.whereIs("tinymce.html"));
-    driver.switchTo().frame("mce_0_ifr");
-
-    WebElement editable = driver.findElement(By.id("tinymce"));
-
-    editable.clear();
-    editable.sendKeys("cheese"); // requires focus on OS X
-
-    assertThat(editable.getText(), equalTo("cheese"));
-  }
-
-  @JavascriptEnabled
-  @Ignore(value = SAFARI, reason = "Untested")
-  @NotYetImplemented(HTMLUNIT)
-  @Test
+  @Ignore(SAFARI)
   public void canSafelyTypeOnElementThatIsRemovedFromTheDomOnKeyPress() {
     driver.get(appServer.whereIs("key_tests/remove_on_keypress.html"));
 
@@ -821,6 +645,17 @@ public class TypingTest extends JUnit4TestBase {
         "keydown (target)",
         "a pressed; removing");
     assertThat(getValueText(log), anyOf(equalTo(expected), equalTo(expected + "\nkeyup (body)")));
+  }
+
+  @Test
+  @NotYetImplemented(value = MARIONETTE)
+  public void canClearNumberInputAfterTypingInvalidInput() {
+    driver.get(pages.formPage);
+    WebElement input = driver.findElement(By.id("age"));
+    input.sendKeys("e");
+    input.clear();
+    input.sendKeys("3");
+    assertEquals("3", input.getAttribute("value"));
   }
 
   private static String getValueText(WebElement el) {

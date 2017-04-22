@@ -19,17 +19,15 @@ package org.openqa.selenium.logging;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assume.assumeTrue;
 import static org.junit.Assume.assumeFalse;
-
-import static org.openqa.selenium.testing.Ignore.Driver.HTMLUNIT;
-import static org.openqa.selenium.testing.Ignore.Driver.IE;
-import static org.openqa.selenium.testing.Ignore.Driver.MARIONETTE;
-import static org.openqa.selenium.testing.Ignore.Driver.PHANTOMJS;
+import static org.junit.Assume.assumeTrue;
+import static org.openqa.selenium.testing.Driver.HTMLUNIT;
+import static org.openqa.selenium.testing.Driver.IE;
+import static org.openqa.selenium.testing.Driver.MARIONETTE;
+import static org.openqa.selenium.testing.Driver.PHANTOMJS;
 
 import org.junit.After;
 import org.junit.Test;
-
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
@@ -44,7 +42,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
-@Ignore({HTMLUNIT, IE, PHANTOMJS, MARIONETTE})
+@Ignore(HTMLUNIT)
+@Ignore(IE)
+@Ignore(PHANTOMJS)
+@Ignore(MARIONETTE)
 public class GetLogsTest extends JUnit4TestBase {
 
   private WebDriver localDriver;

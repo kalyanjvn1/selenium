@@ -26,7 +26,6 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
     StandardSeleniumTests.class,
-    HtmlUnitSpecificTests.class
 })
 public class JavascriptEnabledHtmlUnitDriverTests {
 
@@ -36,10 +35,13 @@ public class JavascriptEnabledHtmlUnitDriverTests {
       super(tweak(capabilities));
     }
 
+    public HtmlUnitDriverForTest(Capabilities desiredCapabilities, Capabilities requiredCapabilities) {
+      super(tweak(desiredCapabilities), tweak(requiredCapabilities));
+    }
+
     private static Capabilities tweak(Capabilities capabilities) {
       DesiredCapabilities caps = new DesiredCapabilities(capabilities);
       caps.setJavascriptEnabled(true);
-      caps.setVersion("31");
       return caps;
     }
   }

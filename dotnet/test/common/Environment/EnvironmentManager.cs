@@ -1,16 +1,12 @@
 using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Reflection;
-using System.Text;
-using OpenQA.Selenium;
 using System.IO;
 
 namespace OpenQA.Selenium.Environment
 {
     public class EnvironmentManager
     {
-        private static readonly EnvironmentManager instance = new EnvironmentManager();
+        private static EnvironmentManager instance;
         private Type driverType;
         private Browser browser;
         private IWebDriver driver;
@@ -21,28 +17,23 @@ namespace OpenQA.Selenium.Environment
 
         private EnvironmentManager()
         {
-            // TODO(andre.nogueira): Error checking to guard against malformed config files
-            string driverClassName = GetSettingValue("Driver");
-            string assemblyName = GetSettingValue("Assembly");
-            Assembly assembly = Assembly.Load(assemblyName);
-            driverType = assembly.GetType(driverClassName);
-            browser = (Browser)Enum.Parse(typeof(Browser), GetSettingValue("DriverName"));
-            remoteCapabilities = GetSettingValue("RemoteCapabilities");
+            string configFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile;
+            try
+            {
+                string driverClassName = GetSettingValue("Driver");
+                string assemblyName = GetSettingValue("Assembly");
+                Assembly assembly = Assembly.Load(assemblyName);
+                driverType = assembly.GetType(driverClassName);
+                browser = (Browser)Enum.Parse(typeof(Browser), GetSettingValue("DriverName"));
+                remoteCapabilities = GetSettingValue("RemoteCapabilities");
+            }
+            catch (Exception)
+            {
+            }
 
             urlBuilder = new UrlBuilder();
 
-            Assembly executingAssembly = Assembly.GetExecutingAssembly();
-            string assemblyLocation = executingAssembly.Location;
-
-            // If we're shadow copying,. fiddle with 
-            // the codebase instead 
-            if (AppDomain.CurrentDomain.ShadowCopyFiles)
-            {
-                Uri uri = new Uri(executingAssembly.CodeBase);
-                assemblyLocation = uri.LocalPath;
-            }
-
-            string currentDirectory = Path.GetDirectoryName(assemblyLocation);
+            string currentDirectory = this.CurrentDirectory;
             DirectoryInfo info = new DirectoryInfo(currentDirectory);
             while (info != info.Root && string.Compare(info.Name, "build", StringComparison.OrdinalIgnoreCase) != 0)
             {
@@ -72,7 +63,16 @@ namespace OpenQA.Selenium.Environment
 
         public static string GetSettingValue(string key)
         {
-            return System.Configuration.ConfigurationManager.AppSettings.GetValues(key)[0];
+            string settingValue = string.Empty;
+            try
+            {
+                settingValue = System.Configuration.ConfigurationManager.AppSettings.GetValues(key)[0];
+            }
+            catch (Exception)
+            {
+            }
+
+            return settingValue;
         }
 
         public Browser Browser 
@@ -80,6 +80,26 @@ namespace OpenQA.Selenium.Environment
             get { return browser; }
         }
 
+        public string CurrentDirectory
+        {
+            get
+            {
+                Assembly executingAssembly = Assembly.GetExecutingAssembly();
+                string assemblyLocation = executingAssembly.Location;
+
+                // If we're shadow copying,. fiddle with 
+                // the codebase instead 
+                if (AppDomain.CurrentDomain.ShadowCopyFiles)
+                {
+                    Uri uri = new Uri(executingAssembly.CodeBase);
+                    assemblyLocation = uri.LocalPath;
+                }
+
+                string currentDirectory = Path.GetDirectoryName(assemblyLocation);
+                return currentDirectory;
+            }
+        }
+        
         public TestWebServer WebServer
         {
             get { return webServer; }
@@ -132,6 +152,11 @@ namespace OpenQA.Selenium.Environment
         {
             get
             {
+                if (instance == null)
+                {
+                    instance = new EnvironmentManager();
+                }
+
                 return instance;
             }
         }

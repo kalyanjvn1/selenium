@@ -17,26 +17,19 @@
 #ifndef WEBDRIVER_IE_IECOMMANDEXECUTOR_H_
 #define WEBDRIVER_IE_IECOMMANDEXECUTOR_H_
 
-#include <Objbase.h>
+#include <ctime>
 #include <map>
 #include <string>
 #include <unordered_map>
-#include "BrowserFactory.h"
+
 #include "command.h"
-#include "command_types.h"
-#include "DocumentHost.h"
-#include "IECommandHandler.h"
-#include "Element.h"
-#include "ElementFinder.h"
-#include "ElementRepository.h"
-#include "InputManager.h"
-#include "ProxyManager.h"
+#include "CustomTypes.h"
 #include "messages.h"
-#include "response.h"
 
 #define WAIT_TIME_IN_MILLISECONDS 200
 #define FIND_ELEMENT_WAIT_TIME_IN_MILLISECONDS 250
 #define ASYNC_SCRIPT_EXECUTION_TIMEOUT_IN_MILLISECONDS 2000
+#define DEFAULT_FILE_UPLOAD_DIALOG_TIMEOUT_IN_MILLISECONDS 3000
 #define MAX_HTML_DIALOG_RETRIES 5
 #define IGNORE_UNEXPECTED_ALERTS "ignore"
 #define ACCEPT_UNEXPECTED_ALERTS "accept"
@@ -46,6 +39,14 @@
 #define NONE_PAGE_LOAD_STRATEGY "none"
 
 namespace webdriver {
+
+// Forward declaration of classes.
+class BrowserFactory;
+class CommandHandlerRepository;
+class ElementFinder;
+class ElementRepository;
+class InputManager;
+class ProxyManager;
 
 // We use a CWindowImpl (creating a hidden window) here because we
 // want to synchronize access to the command handler. For that we
@@ -70,6 +71,7 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor> {
     MESSAGE_HANDLER(WD_GET_QUIT_STATUS, OnGetQuitStatus)
     MESSAGE_HANDLER(WD_REFRESH_MANAGED_ELEMENTS, OnRefreshManagedElements)
     MESSAGE_HANDLER(WD_HANDLE_UNEXPECTED_ALERTS, OnHandleUnexpectedAlerts)
+    MESSAGE_HANDLER(WD_QUIT, OnQuit)
   END_MSG_MAP()
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
@@ -86,6 +88,7 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor> {
   LRESULT OnGetQuitStatus(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnRefreshManagedElements(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnHandleUnexpectedAlerts(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnQuit(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
   std::string session_id(void) const { return this->session_id_; }
 
@@ -166,13 +169,6 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor> {
     this->enable_persistent_hover_ = enable_persistent_hover;
   }
 
-  bool validate_cookie_document_type(void) const {
-    return this->validate_cookie_document_type_;
-  }
-  void set_validate_cookie_document_type(const bool validate_document) {
-    this->validate_cookie_document_type_ = validate_document;
-  }
-
   std::string unexpected_alert_behavior(void) const {
     return this->unexpected_alert_behavior_;
   }
@@ -187,14 +183,34 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor> {
     this->page_load_strategy_ = page_load_strategy;
   }
 
-  ElementFinder element_finder(void) const { return this->element_finder_; }
+  int file_upload_dialog_timeout(void) const {
+    return this->file_upload_dialog_timeout_;
+  }
+  void set_file_upload_dialog_timeout(const int file_upload_dialog_timeout) {
+    this->file_upload_dialog_timeout_ = file_upload_dialog_timeout;
+  }
+
+  bool use_legacy_file_upload_dialog_handling(void) const {
+    return this->use_legacy_file_upload_dialog_handling_;
+  }
+  void set_use_legacy_file_upload_dialog_handling(const bool use_legacy_file_upload_dialog_handling) {
+    this->use_legacy_file_upload_dialog_handling_ = use_legacy_file_upload_dialog_handling;
+  }
+
+  bool enable_full_page_screenshot(void) const {
+    return this->enable_full_page_screenshot_;
+  }
+  void set_enable_full_page_screenshot(const bool enable_full_page_screenshot) {
+    this->enable_full_page_screenshot_ = enable_full_page_screenshot;
+  }
+
+  ElementFinder* element_finder(void) const { return this->element_finder_; }
   InputManager* input_manager(void) const { return this->input_manager_; }
   ProxyManager* proxy_manager(void) const { return this->proxy_manager_; }
   BrowserFactory* browser_factory(void) const { return this->factory_; }
 
   int port(void) const { return this->port_; }
 
-  int browser_version(void) const { return this->factory_->browser_version(); }
   size_t managed_window_count(void) const {
     return this->managed_browsers_.size();
   }
@@ -202,13 +218,11 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor> {
  private:
   typedef std::tr1::unordered_map<std::string, BrowserHandle> BrowserMap;
   typedef std::map<std::string, std::wstring> ElementFindMethodMap;
-  typedef std::map<std::string, CommandHandlerHandle> CommandHandlerMap;
 
   void AddManagedBrowser(BrowserHandle browser_wrapper);
 
   void DispatchCommand(void);
 
-  void PopulateCommandHandlers(void);
   void PopulateElementFinderMethods(void);
 
   bool IsAlertActive(BrowserHandle browser, HWND* alert_handle);
@@ -217,12 +231,13 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor> {
                                     bool force_use_dismiss);
 
   BrowserMap managed_browsers_;
-  ElementRepository managed_elements_;
+  ElementRepository* managed_elements_;
   ElementFindMethodMap element_find_methods_;
+  CommandHandlerRepository* command_handlers_;
 
   std::string current_browser_id_;
 
-  ElementFinder element_finder_;
+  ElementFinder* element_finder_;
 
   int implicit_wait_timeout_;
   int async_script_timeout_;
@@ -236,12 +251,13 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor> {
   bool ignore_zoom_setting_;
   std::string initial_browser_url_;
   std::string unexpected_alert_behavior_;
-  bool validate_cookie_document_type_;
   std::string page_load_strategy_;
+  int file_upload_dialog_timeout_;
+  bool use_legacy_file_upload_dialog_handling_;
+  bool enable_full_page_screenshot_;
 
   Command current_command_;
   std::string serialized_response_;
-  CommandHandlerMap command_handlers_;
   bool is_waiting_;
   bool is_valid_;
   bool is_quitting_;

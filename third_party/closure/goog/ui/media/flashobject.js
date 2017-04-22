@@ -91,8 +91,9 @@ goog.ui.media.FlashObject = function(flashUrl, opt_domHelper) {
   } else {
     var flashUrlSanitized =
         goog.html.SafeUrl.unwrap(goog.html.SafeUrl.sanitize(flashUrl));
-    trustedResourceUrl = goog.html.legacyconversions
-        .trustedResourceUrlFromString(flashUrlSanitized);
+    trustedResourceUrl =
+        goog.html.legacyconversions.trustedResourceUrlFromString(
+            flashUrlSanitized);
   }
 
   /**
@@ -136,6 +137,22 @@ goog.ui.media.FlashObject.SwfReadyStates_ = {
   LOADED: 2,
   INTERACTIVE: 3,
   COMPLETE: 4
+};
+
+
+/**
+ * IE specific ready states.
+ *
+ * @see https://msdn.microsoft.com/en-us/library/ms534359(v=vs.85).aspx
+ * @enum {string}
+ * @private
+ */
+goog.ui.media.FlashObject.IeSwfReadyStates_ = {
+  LOADING: 'loading',
+  UNINITIALIZED: 'uninitialized',
+  LOADED: 'loaded',
+  INTERACTIVE: 'interactive',
+  COMPLETE: 'complete'
 };
 
 
@@ -332,16 +349,18 @@ goog.ui.media.FlashObject.prototype.setFlashVar = function(key, value) {
  * @param {string=} opt_value The optional value for the flashVar key.
  * @return {!goog.ui.media.FlashObject} The flash object instance for chaining.
  */
-goog.ui.media.FlashObject.prototype.setFlashVars = function(flashVar,
-                                                            opt_value) {
+goog.ui.media.FlashObject.prototype.setFlashVars = function(
+    flashVar, opt_value) {
   if (flashVar instanceof goog.structs.Map ||
       goog.typeOf(flashVar) == 'object') {
-    this.addFlashVars(/**@type {!goog.structs.Map|!Object}*/(flashVar));
+    this.addFlashVars(/**@type {!goog.structs.Map|!Object}*/ (flashVar));
   } else {
-    goog.asserts.assert(goog.isString(flashVar) && goog.isDef(opt_value),
+    goog.asserts.assert(
+        goog.isString(flashVar) && goog.isDef(opt_value),
         'Invalid argument(s)');
-    this.setFlashVar(/**@type {string}*/(flashVar),
-                     /**@type {string}*/(opt_value));
+    this.setFlashVar(
+        /**@type {string}*/ (flashVar),
+        /**@type {string}*/ (opt_value));
   }
   return this;
 };
@@ -482,8 +501,7 @@ goog.ui.media.FlashObject.prototype.enterDocument = function() {
   // inexpensive/scalable way to stop events on the capturing phase unless we
   // added an event listener on the document for each flash object.
   this.eventHandler_.listen(
-      this.getElement(),
-      goog.object.getValues(goog.events.EventType),
+      this.getElement(), goog.object.getValues(goog.events.EventType),
       goog.events.Event.stopPropagation);
 };
 
@@ -497,8 +515,9 @@ goog.ui.media.FlashObject.prototype.createDom = function() {
   if (this.hasRequiredVersion() &&
       !goog.userAgent.flash.isVersion(
           /** @type {string} */ (this.getRequiredVersion()))) {
-    goog.log.warning(this.logger_, 'Required flash version not found:' +
-        this.getRequiredVersion());
+    goog.log.warning(
+        this.logger_,
+        'Required flash version not found:' + this.getRequiredVersion());
     throw Error(goog.ui.Component.Error.NOT_SUPPORTED);
   }
 
@@ -542,21 +561,19 @@ goog.ui.media.FlashObject.prototype.createSwfTag_ = function() {
  * @private
  */
 goog.ui.media.FlashObject.prototype.createSwfTagModern_ = function(flashVars) {
-  return goog.html.flash.createEmbed(
-      this.flashUrl_,
-      {
-        'AllowScriptAccess': this.allowScriptAccess_,
-        'allowFullScreen': 'true',
-        'allowNetworking': 'all',
-        'bgcolor': this.backgroundColor_,
-        'class': goog.ui.media.FlashObject.FLASH_CSS_CLASS,
-        'FlashVars': flashVars,
-        'id': this.getId(),
-        'name': this.getId(),
-        'quality': 'high',
-        'SeamlessTabbing': 'false',
-        'wmode': this.wmode_
-      });
+  return goog.html.flash.createEmbed(this.flashUrl_, {
+    'AllowScriptAccess': this.allowScriptAccess_,
+    'allowFullScreen': 'true',
+    'allowNetworking': 'all',
+    'bgcolor': this.backgroundColor_,
+    'class': goog.ui.media.FlashObject.FLASH_CSS_CLASS,
+    'FlashVars': flashVars,
+    'id': this.getId(),
+    'name': this.getId(),
+    'quality': 'high',
+    'SeamlessTabbing': 'false',
+    'wmode': this.wmode_
+  });
 };
 
 
@@ -570,8 +587,7 @@ goog.ui.media.FlashObject.prototype.createSwfTagModern_ = function(flashVars) {
  */
 goog.ui.media.FlashObject.prototype.createSwfTagOldIe_ = function(flashVars) {
   return goog.html.flash.createObjectForOldIe(
-      this.flashUrl_,
-      {
+      this.flashUrl_, {
         'allowFullScreen': 'true',
         'AllowScriptAccess': this.allowScriptAccess_,
         'allowNetworking': 'all',
@@ -594,8 +610,8 @@ goog.ui.media.FlashObject.prototype.createSwfTagOldIe_ = function(flashVars) {
  *     be found.
  */
 goog.ui.media.FlashObject.prototype.getFlashElement = function() {
-  return /** @type {HTMLObjectElement} */(this.getElement() ?
-      this.getElement().firstChild : null);
+  return /** @type {HTMLObjectElement} */ (
+      this.getElement() ? this.getElement().firstChild : null);
 };
 
 
@@ -617,13 +633,23 @@ goog.ui.media.FlashObject.prototype.isLoaded = function() {
     return false;
   }
 
+  // IE has different readyState values for elements.
+  if (goog.userAgent.EDGE_OR_IE && this.getFlashElement().readyState &&
+      this.getFlashElement().readyState ==
+          goog.ui.media.FlashObject.IeSwfReadyStates_.COMPLETE) {
+    return true;
+  }
+
   if (this.getFlashElement().readyState &&
       this.getFlashElement().readyState ==
           goog.ui.media.FlashObject.SwfReadyStates_.COMPLETE) {
     return true;
   }
 
-  if (this.getFlashElement().PercentLoaded &&
+  // Use "in" operator to check for PercentLoaded because IE8 throws when
+  // accessing directly. See:
+  // https://github.com/google/closure-library/pull/373.
+  if ('PercentLoaded' in this.getFlashElement() &&
       this.getFlashElement().PercentLoaded() == 100) {
     return true;
   }

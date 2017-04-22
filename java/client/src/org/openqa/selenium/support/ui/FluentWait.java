@@ -17,21 +17,22 @@
 
 package org.openqa.selenium.support.ui;
 
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriverException;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * An implementation of the {@link Wait} interface that may have its timeout and polling interval
@@ -45,7 +46,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * element on the page.
  *
  * <p>
- * Sample usage: <pre>{@code
+ * Sample usage: <pre>
  *   // Waiting 30 seconds for an element to be present on the page, checking
  *   // for its presence once every 5 seconds.
  *   Wait&lt;WebDriver&gt; wait = new FluentWait&lt;WebDriver&gt;(driver)
@@ -58,7 +59,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  *       return driver.findElement(By.id("foo"));
  *     }
  *   });
- * }</pre>
+ * </pre>
  *
  * <p>
  * <em>This class makes no thread safety guarantees.</em>
@@ -75,7 +76,7 @@ public class FluentWait<T> implements Wait<T> {
 
   private Duration timeout = FIVE_HUNDRED_MILLIS;
   private Duration interval = FIVE_HUNDRED_MILLIS;
-  private String message = null;
+  private Supplier<String> messageSupplier = () -> null;
 
   private List<Class<? extends Throwable>> ignoredExceptions = Lists.newLinkedList();
 
@@ -116,8 +117,19 @@ public class FluentWait<T> implements Wait<T> {
    * @param message to be appended to default.
    * @return A self reference.
    */
-  public FluentWait<T> withMessage(String message) {
-    this.message = message;
+  public FluentWait<T> withMessage(final String message) {
+    this.messageSupplier = () -> message;
+    return this;
+  }
+
+  /**
+   * Sets the message to be evaluated and displayed when time expires.
+   *
+   * @param messageSupplier to be evaluated on failure and appended to default.
+   * @return A self reference.
+   */
+  public FluentWait<T> withMessage(Supplier<String> messageSupplier) {
+    this.messageSupplier = messageSupplier;
     return this;
   }
 
@@ -142,6 +154,7 @@ public class FluentWait<T> implements Wait<T> {
    * Any exceptions not whitelisted will be allowed to propagate, terminating the wait.
    *
    * @param types The types of exceptions to ignore.
+   * @param <K> an Exception that extends Throwable
    * @return A self reference.
    */
   public <K extends Throwable> FluentWait<T> ignoreAll(Collection<Class<? extends K>> types) {
@@ -151,6 +164,8 @@ public class FluentWait<T> implements Wait<T> {
 
   /**
    * @see #ignoreAll(Collection)
+   * @param exceptionType exception to ignore
+   * @return a self reference
    */
   public FluentWait<T> ignoring(Class<? extends Throwable> exceptionType) {
     return this.ignoreAll(ImmutableList.<Class<? extends Throwable>>of(exceptionType));
@@ -158,32 +173,16 @@ public class FluentWait<T> implements Wait<T> {
 
   /**
    * @see #ignoreAll(Collection)
+   * @param firstType exception to ignore
+   * @param secondType another exception to ignore
+   * @return a self reference
    */
   public FluentWait<T> ignoring(Class<? extends Throwable> firstType,
                                 Class<? extends Throwable> secondType) {
 
-    return this.ignoreAll(ImmutableList.<Class<? extends Throwable>>of(firstType, secondType));
+    return this.ignoreAll(ImmutableList.of(firstType, secondType));
   }
-
-  /**
-   * Repeatedly applies this instance's input value to the given predicate until the timeout expires
-   * or the predicate evaluates to true.
-   *
-   * @param isTrue The predicate to wait on.
-   * @throws TimeoutException If the timeout expires.
-   */
-  public void until(final Predicate<T> isTrue) {
-    until(new Function<T, Boolean>() {
-      public Boolean apply(T input) {
-        return isTrue.apply(input);
-      }
-
-      public String toString() {
-        return isTrue.toString();
-      }
-    });
-  }
-
+  
   /**
    * Repeatedly applies this instance's input value to the given function until one of the following
    * occurs:
@@ -201,31 +200,35 @@ public class FluentWait<T> implements Wait<T> {
    *         from null or false before the timeout expired.
    * @throws TimeoutException If the timeout expires.
    */
+  @Override
   public <V> V until(Function<? super T, V> isTrue) {
     long end = clock.laterBy(timeout.in(MILLISECONDS));
-    Throwable lastException = null;
+    Throwable lastException;
     while (true) {
       try {
         V value = isTrue.apply(input);
-        if (value != null && Boolean.class.equals(value.getClass())) {
-          if (Boolean.TRUE.equals(value)) {
-            return value;
-          }
-        } else if (value != null) {
+        if (value != null && (Boolean.class != value.getClass() || Boolean.TRUE.equals(value))) {
           return value;
         }
+
+        // Clear the last exception; if another retry or timeout exception would
+        // be caused by a false or null value, the last exception is not the
+        // cause of the timeout.
+        lastException = null;
       } catch (Throwable e) {
-        lastException = propagateIfNotIngored(e);
+        lastException = propagateIfNotIgnored(e);
       }
 
       // Check the timeout after evaluating the function to ensure conditions
       // with a zero timeout can succeed.
       if (!clock.isNowBefore(end)) {
-        String toAppend = message == null ?
-            " waiting for " + isTrue.toString() : ": " + message;
+        String message = messageSupplier != null ?
+            messageSupplier.get() : null;
 
-        String timeoutMessage = String.format("Timed out after %d seconds%s",
-            timeout.in(SECONDS), toAppend);
+        String timeoutMessage = String.format(
+            "Expected condition failed: %s (tried for %d second(s) with %s interval)",
+            message == null ? "waiting for " + isTrue : message,
+            timeout.in(SECONDS), interval);
         throw timeoutException(timeoutMessage, lastException);
       }
 
@@ -238,13 +241,14 @@ public class FluentWait<T> implements Wait<T> {
     }
   }
 
-  private Throwable propagateIfNotIngored(Throwable e) {
+  private Throwable propagateIfNotIgnored(Throwable e) {
     for (Class<? extends Throwable> ignoredException : ignoredExceptions) {
       if (ignoredException.isInstance(e)) {
         return e;
       }
     }
-    throw Throwables.propagate(e);
+    Throwables.throwIfUnchecked(e);
+    throw new RuntimeException(e);
   }
 
   /**

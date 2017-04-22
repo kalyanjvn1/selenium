@@ -32,6 +32,7 @@ import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.util.EntityUtils;
+import org.openqa.grid.common.SeleniumProtocol;
 import org.openqa.grid.common.exception.ClientGoneException;
 import org.openqa.grid.common.exception.GridException;
 import org.openqa.grid.internal.listeners.CommandListener;
@@ -41,7 +42,6 @@ import org.openqa.grid.web.servlet.handler.RequestType;
 import org.openqa.grid.web.servlet.handler.SeleniumBasedRequest;
 import org.openqa.grid.web.servlet.handler.SeleniumBasedResponse;
 import org.openqa.grid.web.servlet.handler.WebDriverRequest;
-import org.openqa.selenium.io.IOUtils;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -59,6 +59,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import javax.servlet.http.HttpServletRequest;
@@ -66,7 +67,7 @@ import javax.servlet.http.HttpServletResponse;
 
 /**
  * Represent a running test for the hub/registry. A test session is created when a TestSlot becomes
- * available for a test. <p/> The session is destroyed when the test ends ( ended by the client or
+ * available for a test. <p> The session is destroyed when the test ends ( ended by the client or
  * timed out)
  */
 @SuppressWarnings("JavaDoc")
@@ -91,7 +92,7 @@ public class TestSession {
     return internalKey;
   }
 
-  /**
+  /*
    * Creates a test session on the specified testSlot.
    */
   public TestSession(TestSlot slot, Map<String, Object> requestedCapabilities,
@@ -104,7 +105,7 @@ public class TestSession {
   }
 
   /**
-   * the capabilities the client requested. It will match the TestSlot capabilities, but is not
+   * @return the capabilities the client requested. It will match the TestSlot capabilities, but is not
    * equals.
    */
   public Map<String, Object> getRequestedCapabilities() {
@@ -123,6 +124,7 @@ public class TestSession {
 
   /**
    * associate this session to the session provided by the remote.
+   * @param externalKey external session key
    */
   public void setExternalKey(ExternalSessionKey externalKey) {
     this.externalKey = externalKey;
@@ -139,10 +141,8 @@ public class TestSession {
   public long getInactivityTime() {
     if (ignoreTimeout) {
       return 0;
-    } else {
-      return timeSource.currentTimeInMillis() - lastActivity;
     }
-
+    return timeSource.currentTimeInMillis() - lastActivity;
   }
 
   public boolean isOrphaned() {
@@ -150,7 +150,7 @@ public class TestSession {
 
     // The session needs to have been open for at least the time interval and we need to have not
     // seen any new commands during that time frame.
-    return slot.getProtocol().isSelenium()
+    return slot.getProtocol().equals(SeleniumProtocol.Selenium)
            && elapsedSinceCreation > MAX_IDLE_TIME_BEFORE_CONSIDERED_ORPHANED
            && sessionCreatedAt == lastActivity;
   }
@@ -194,16 +194,16 @@ public class TestSession {
 
   private HttpClient getClient() {
     Registry reg = slot.getProxy().getRegistry();
-    int browserTimeout = reg.getConfiguration().getBrowserTimeout();
-    if (browserTimeout > 0){
-      final int selenium_server_cleanup_cycle = browserTimeout / 10;
+    long browserTimeout = TimeUnit.SECONDS.toMillis(reg.getConfiguration().browserTimeout);
+    if (browserTimeout > 0) {
+      final long selenium_server_cleanup_cycle = browserTimeout / 10;
       browserTimeout += (selenium_server_cleanup_cycle + MAX_NETWORK_LATENCY);
       browserTimeout *=2; // Lets not let this happen too often
     }
-    return slot.getProxy().getHttpClientFactory().getGridHttpClient(browserTimeout, browserTimeout);
+    return slot.getProxy().getHttpClientFactory().getGridHttpClient((int)browserTimeout, (int)browserTimeout);
   }
 
-  /**
+  /*
    * forwards the request to the node.
    */
   public String forward(SeleniumBasedRequest request, HttpServletResponse response,
@@ -234,10 +234,15 @@ public class TestSession {
 
         byte[] consumedNewWebDriverSessionBody = null;
         if (statusCode != HttpServletResponse.SC_INTERNAL_SERVER_ERROR &&
-            statusCode != HttpServletResponse.SC_NOT_FOUND) {
+            statusCode != HttpServletResponse.SC_NOT_FOUND &&
+            statusCode != HttpServletResponse.SC_BAD_REQUEST &&
+            statusCode != HttpServletResponse.SC_UNAUTHORIZED) {
           consumedNewWebDriverSessionBody = updateHubIfNewWebDriverSession(request, proxyResponse);
         }
-        if (newSessionRequest && statusCode == HttpServletResponse.SC_INTERNAL_SERVER_ERROR) {
+        if (newSessionRequest &&
+            (statusCode == HttpServletResponse.SC_INTERNAL_SERVER_ERROR ||
+            statusCode == HttpServletResponse.SC_BAD_REQUEST ||
+            statusCode == HttpServletResponse.SC_UNAUTHORIZED)) {
           removeIncompleteNewSessionRequest();
         }
         if (statusCode == HttpServletResponse.SC_NOT_FOUND) {
@@ -246,36 +251,33 @@ public class TestSession {
 
         byte[] contentBeingForwarded = null;
         if (responseBody != null) {
-          try {
-            InputStream in;
-            if (consumedNewWebDriverSessionBody == null) {
-              in = responseBody.getContent();
-              if (request.getRequestType() == RequestType.START_SESSION
-                  && request instanceof LegacySeleniumRequest) {
-                res = getResponseUtf8Content(in);
+          InputStream in;
+          if (consumedNewWebDriverSessionBody == null) {
+            in = responseBody.getContent();
+            if (request.getRequestType() == RequestType.START_SESSION && request instanceof LegacySeleniumRequest) {
+              res = getResponseUtf8Content(in);
 
-                updateHubNewSeleniumSession(res);
+              updateHubNewSeleniumSession(res);
 
-                in = new ByteArrayInputStream(res.getBytes("UTF-8"));
-              }
-            } else {
-              in = new ByteArrayInputStream(consumedNewWebDriverSessionBody);
+              in = new ByteArrayInputStream(res.getBytes("UTF-8"));
             }
-
-            final byte[] bytes = drainInputStream(in);
-            writeRawBody(response, bytes);
-            contentBeingForwarded = bytes;
-
-          } finally {
-            EntityUtils.consume(responseBody);
+          } else {
+            in = new ByteArrayInputStream(consumedNewWebDriverSessionBody);
           }
 
+          final byte[] bytes = drainInputStream(in);
+          contentBeingForwarded = bytes;
         }
 
         if (slot.getProxy() instanceof CommandListener) {
           SeleniumBasedResponse wrappedResponse = new SeleniumBasedResponse(response);
           wrappedResponse.setForwardedContent(contentBeingForwarded);
           ((CommandListener) slot.getProxy()).afterCommand(this, request, wrappedResponse);
+          contentBeingForwarded = wrappedResponse.getForwardedContentAsByteArray();
+        }
+
+        if (contentBeingForwarded != null) {
+          writeRawBody(response, contentBeingForwarded);
         }
         response.flushBuffer();
       } finally {
@@ -332,11 +334,10 @@ public class TestSession {
           }
           setExternalKey(key);
           return consumedData;
-        } else {
-          throw new GridException(
-              "new session request for webdriver should contain a location header "
-              + "or an 'application/json;charset=UTF-8' response body with the session ID.");
         }
+        throw new GridException(
+            "new session request for webdriver should contain a location header "
+            + "or an 'application/json;charset=UTF-8' response body with the session ID.");
       }
       ExternalSessionKey key = ExternalSessionKey.fromWebDriverRequest(h.getValue());
       setExternalKey(key);
@@ -366,7 +367,7 @@ public class TestSession {
                                                                           IOException {
     HttpClient client = getClient();
     URL remoteURL = slot.getRemoteURL();
-    HttpHost host = new HttpHost(remoteURL.getHost(), remoteURL.getPort());
+    HttpHost host = new HttpHost(remoteURL.getHost(), remoteURL.getPort(), remoteURL.getProtocol());
 
     return client.execute(host, proxyRequest);
   }
@@ -418,8 +419,7 @@ public class TestSession {
   }
 
   private void writeRawBody(HttpServletResponse response, byte[] rawBody) throws IOException {
-    OutputStream out = response.getOutputStream();
-    try {
+    try (OutputStream out = response.getOutputStream()) {
       // We need to set the Content-Length header before we write to the output stream. Usually
       // the
       // Content-Length header is already set because we take it from the proxied request. But, it
@@ -436,8 +436,6 @@ public class TestSession {
       out.write(rawBody);
     } catch (IOException e) {
       throw new ClientGoneException(e);
-    } finally {
-      IOUtils.closeQuietly(out);
     }
   }
 
@@ -492,13 +490,12 @@ public class TestSession {
       // the location needs to point to the hub that will proxy
       // everything.
       if (name.equalsIgnoreCase("Location")) {
-        URL returnedLocation = new URL(value);
+        URL returnedLocation = new URL(remoteURL, value);
         String driverPath = remoteURL.getPath();
         String wrongPath = returnedLocation.getPath();
         String correctPath = wrongPath.replace(driverPath, "");
         Hub hub = slot.getProxy().getRegistry().getHub();
-        String location = "http://" + hub.getHost() + ":" + hub.getPort() + pathSpec + correctPath;
-        response.setHeader(name, location);
+        response.setHeader(name, hub.getUrl(pathSpec + correctPath).toString());
       } else {
         response.setHeader(name, value);
       }
@@ -508,6 +505,7 @@ public class TestSession {
   /**
    * Allow you to retrieve an object previously stored on the test session.
    *
+   * @param key key
    * @return the object you stored
    */
   public Object get(String key) {
@@ -518,6 +516,7 @@ public class TestSession {
    * Allows you to store an object on the test session.
    *
    * @param key a non-null string
+   * @param value value object
    */
   public void put(String key, Object value) {
     objects.put(key, value);
@@ -561,21 +560,23 @@ public class TestSession {
     } catch (Throwable e) {
       ok = false;
       // corrupted or the something else already sent the DELETE.
-      log.severe("Error releasing. Server corrupted ?");
-    }finally{
-        try {
-            EntityUtils.consume(responseBody);
-         } catch (IOException e) {
-          log.warning("Consuming the response body when DELETE to the node" + e.getMessage());
-        }
+      log.severe("Unable to send DELETE request for the current session " + e.getMessage());
+    } finally {
+      try {
+        EntityUtils.consume(responseBody);
+      } catch (IOException e) {
+        log.warning("Consuming the response body when DELETE to the node " + e.getMessage());
+      }
     }
     return ok;
   }
 
 
   /**
-   * allow to bypass time out for this session. ignore = true => the session will not time out.
+   * allow to bypass time out for this session. ignore = true =&gt; the session will not time out.
    * setIgnoreTimeout(true) also update the lastActivity to now.
+   *
+   * @param ignore true to ignore the timeout
    */
   public void setIgnoreTimeout(boolean ignore) {
     if (!ignore) {

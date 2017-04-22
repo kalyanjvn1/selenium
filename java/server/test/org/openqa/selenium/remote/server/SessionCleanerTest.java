@@ -34,7 +34,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.internal.Killable;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.SessionId;
-import org.openqa.selenium.remote.server.testing.StaticTestSessions;
+import org.openqa.testing.StaticTestSessions;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -86,10 +86,10 @@ public class SessionCleanerTest {
   private Runnable getRunnableThatMakesSessionBusy(final Session session,
                                                    final CountDownLatch started,
                                                    final CountDownLatch testDone) {
-    return new Runnable(){
-      public void run(){
+    return new Runnable() {
+      public void run() {
         try {
-          session.execute(new FutureTask<Object>(new Callable<Object>()
+          session.execute(new FutureTask<>(new Callable<Object>()
          {
           public Object call() {
             try {
@@ -116,7 +116,7 @@ public class SessionCleanerTest {
     assertEquals(2, defaultDriverSessions.getSessions().size());
     SessionCleaner sessionCleaner = new TestSessionCleaner(defaultDriverSessions, log, 10);
     sessionCleaner.start();
-    waitForAllSessionsToExpire(11);
+    waitForAllSessionsToExpire(20);
     synchronized (sessionCleaner) {
       sessionCleaner.wait();
     }

@@ -24,8 +24,7 @@ goog.provide('goog.reflect');
 /**
  * Syntax for object literal casts.
  * @see http://go/jscompiler-renaming
- * @see http://code.google.com/p/closure-compiler/wiki/
- *      ExperimentalTypeBasedPropertyRenaming
+ * @see https://goo.gl/CRs09P
  *
  * Use this if you have an object literal whose keys need to have the same names
  * as the properties of some class even after they are renamed by the compiler.
@@ -73,6 +72,7 @@ goog.reflect.canAccessProperty = function(obj, prop) {
   try {
     goog.reflect.sinkValue(obj[prop]);
     return true;
-  } catch (e) {}
+  } catch (e) {
+  }
   return false;
 };

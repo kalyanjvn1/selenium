@@ -111,7 +111,10 @@ public class HttpCommandProcessor implements CommandProcessor {
     throw new SeleniumException(message);
   }
 
-  /** Sends the specified command string to the bridge servlet */
+  /** Sends the specified command string to the bridge servlet
+   * @param command command to execute
+   * @return response from the command execution
+   */
   public String executeCommandOnServlet(String command) {
     try {
       return getCommandResponseAsString(command);
@@ -179,7 +182,7 @@ public class HttpCommandProcessor implements CommandProcessor {
         if (responsecode == HttpURLConnection.HTTP_MOVED_PERM) {
           pathToServlet = uc.getHeaderField("Location");
         } else if (responsecode != HttpURLConnection.HTTP_OK) {
-          throwAssertionFailureExceptionOrError(uc.getResponseMessage());
+          throwAssertionFailureExceptionOrError(uc.getResponseMessage() + " URL: " + result);
         } else {
           rdr = getInputStreamReader(uc);
           responseString = stringContentsOfInputStream(rdr);
@@ -249,7 +252,7 @@ public class HttpCommandProcessor implements CommandProcessor {
    * Wraps the version of start() that takes a String parameter, sending it the result of calling
    * toString() on optionsObject, which will likely be a BrowserConfigurationOptions instance.
    *
-   * @param optionsObject
+   * @param optionsObject start options
    */
   public void start(Object optionsObject) {
     start(optionsObject.toString());

@@ -15,13 +15,14 @@
 // limitations under the License.
 
 #include "IESession.h"
+
+#include "logging.h"
+
 #include "BrowserFactory.h"
 #include "CommandExecutor.h"
 #include "IECommandExecutor.h"
-#include "IEWebDriverManagerCommandExecutor.h"
-#include "interactions.h"
-#include "logging.h"
 #include "messages.h"
+#include "StringUtilities.h"
 
 typedef unsigned (__stdcall *ThreadProcedure)(void*);
 
@@ -60,7 +61,6 @@ void IESession::Initialize(void* init_params) {
 
   SessionParameters* params = reinterpret_cast<SessionParameters*>(init_params);
   int port = params->port;
-  this->driver_implementation_ = params->implementation;
 
   IECommandExecutorThreadContext thread_context;
   thread_context.port = port;
@@ -74,28 +74,6 @@ void IESession::Initialize(void* init_params) {
   }
 
   ThreadProcedure thread_proc = &IECommandExecutor::ThreadProc;
-  if (this->driver_implementation_ != LegacyImplementation) {
-    BrowserFactory factory;
-    int browser_version = factory.browser_version();
-    bool is_component_registered = IEWebDriverManagerCommandExecutor::IsComponentRegistered();
-    if (this->driver_implementation_ == VendorImplementation) {
-      LOG(DEBUG) << "Attempting to use vendor-provided driver implementation per user request";
-      thread_proc = &IEWebDriverManagerCommandExecutor::ThreadProc;
-    } else if (this->driver_implementation_ == AutoDetectImplementation &&
-               browser_version >= 11 &&
-               is_component_registered) {
-      LOG(DEBUG) << "Using vendor-provided driver implementation per autodetection";
-      thread_proc = &IEWebDriverManagerCommandExecutor::ThreadProc;
-    } else {
-      LOG(DEBUG) << "Falling back to legacy driver implementation per autodetection ("
-                 << "detected IE version: " << browser_version
-                 << ", vendor driver install is "
-                 << (is_component_registered ? "" : "not")
-                 << " registered).";
-    }
-  } else {
-    LOG(DEBUG) << "Using legacy driver implementation per user request";
-  }
   HANDLE thread_handle = reinterpret_cast<HANDLE>(_beginthreadex(NULL,
                                                                  0,
                                                                  thread_proc,
@@ -141,9 +119,7 @@ void IESession::ShutDown(void) {
   LOG(TRACE) << "Entering IESession::ShutDown";
 
   // Kill the background thread first - otherwise the IE process crashes.
-  if (this->driver_implementation_ == LegacyImplementation) {
-    stopPersistentEventFiring();
-  }
+  ::SendMessage(this->executor_window_handle_, WD_QUIT, NULL, NULL);
 
   // Don't terminate the thread until the browsers have all been deallocated.
   // Note: Loop count of 6, because the timeout is 5 seconds, giving us a nice,
@@ -256,16 +232,6 @@ bool IESession::ExecuteCommand(const std::string& serialized_command,
                                         NULL,
                                         NULL) != 0;
   return session_is_valid;
-}
-
-DriverImplementation IESession::ConvertDriverEngine(const std::string& engine) {
-  if (engine == "VENDOR") {
-    return VendorImplementation;
-  }
-  if (engine == "AUTODETECT") {
-    return AutoDetectImplementation;
-  }
-  return LegacyImplementation;
 }
 
 } // namespace webdriver

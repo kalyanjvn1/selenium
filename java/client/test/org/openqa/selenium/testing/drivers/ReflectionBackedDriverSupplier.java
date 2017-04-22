@@ -17,24 +17,17 @@
 
 package org.openqa.selenium.testing.drivers;
 
-import static org.openqa.selenium.Platform.WINDOWS;
+import static org.openqa.selenium.remote.CapabilityType.SUPPORTS_JAVASCRIPT;
 import static org.openqa.selenium.testing.DevMode.isInDevMode;
 
-import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
-import com.google.common.io.Files;
 
 import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.Platform;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.firefox.FirefoxProfile;
 import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.testing.InProject;
 
-import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 public class ReflectionBackedDriverSupplier implements Supplier<WebDriver> {
@@ -59,23 +52,13 @@ public class ReflectionBackedDriverSupplier implements Supplier<WebDriver> {
         return null;
       }
 
-      if (DesiredCapabilities.firefox().getBrowserName().
-          equals(desiredCapsToUse.getBrowserName())) {
-        if (isInDevMode()) {
-          copyFirefoxDriverDefaultsToOutputDir();
-        }
-
-        FirefoxProfile profile = new FirefoxProfile();
-        boolean enableNativeEvents = Boolean.getBoolean("selenium.browser.native_events") ||
-                               Platform.getCurrent().is(WINDOWS);
-        profile.setEnableNativeEvents(enableNativeEvents);
-        desiredCapsToUse.setCapability(FirefoxDriver.PROFILE, profile);
-
-        return driverClass.getConstructor(Capabilities.class,
-            Capabilities.class).newInstance(desiredCapsToUse, requiredCapabilities);
+      try {
+          return driverClass.getConstructor(Capabilities.class,
+             Capabilities.class).newInstance(desiredCapsToUse, requiredCapabilities);
+      } catch (NoSuchMethodException e) {
+          // ignore
       }
 
-      //TODO: Call constructor with two Capabilities arguments for all driver classes
       return driverClass.getConstructor(Capabilities.class).newInstance(desiredCapsToUse);
     } catch (InvocationTargetException e) {
       throw Throwables.propagate(e.getTargetException());
@@ -84,26 +67,23 @@ public class ReflectionBackedDriverSupplier implements Supplier<WebDriver> {
     }
   }
 
-  private void copyFirefoxDriverDefaultsToOutputDir() throws IOException {
-    File defaults = InProject.locate("javascript/firefox-driver/webdriver.json");
-    File out = InProject.locate("java/client/build/production/org/openqa/selenium/firefox/FirefoxProfile.class").getParentFile();
-    out = new File(out, "webdriver.json");
-    Files.copy(defaults, out);
-  }
-
   // Cover your eyes
   private Class<? extends WebDriver> mapToClass(Capabilities caps) {
     String name = caps == null ? "" : caps.getBrowserName();
-    String className = null;
+    String className;
 
     if (DesiredCapabilities.chrome().getBrowserName().equals(name)) {
       className = "org.openqa.selenium.testing.drivers.TestChromeDriver";
     } else if (DesiredCapabilities.operaBlink().getBrowserName().equals(name)) {
       className = "org.openqa.selenium.testing.drivers.TestOperaBlinkDriver";
     } else if (DesiredCapabilities.firefox().getBrowserName().equals(name)) {
-      className = getFirefoxClassName();
+      if (isInDevMode()) {
+        className = "org.openqa.selenium.testing.drivers.SynthesizedFirefoxDriver";
+      } else {
+        className = "org.openqa.selenium.firefox.FirefoxDriver";
+      }
     } else if (DesiredCapabilities.htmlUnit().getBrowserName().equals(name)) {
-      if (caps.isJavascriptEnabled()) {
+      if (caps.is(SUPPORTS_JAVASCRIPT)) {
         className = "org.openqa.selenium.htmlunit.JavascriptEnabledHtmlUnitDriverTests$HtmlUnitDriverForTest";
       } else {
         className = "org.openqa.selenium.htmlunit.HtmlUnitDriver";
@@ -125,17 +105,7 @@ public class ReflectionBackedDriverSupplier implements Supplier<WebDriver> {
     try {
       return Class.forName(className).asSubclass(WebDriver.class);
     } catch (ClassNotFoundException e) {
-      throw Throwables.propagate(e);
-    }
-  }
-
-  private String getFirefoxClassName() {
-    if (Boolean.parseBoolean(System.getProperty(FirefoxDriver.SystemProperty.DRIVER_USE_MARIONETTE))) {
-      return "org.openqa.selenium.firefox.MarionetteDriver";
-    } else if (isInDevMode()) {
-      return "org.openqa.selenium.testing.drivers.SynthesizedFirefoxDriver";
-    } else {
-      return "org.openqa.selenium.firefox.FirefoxDriver";
+      throw new RuntimeException(e);
     }
   }
 }

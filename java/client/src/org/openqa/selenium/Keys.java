@@ -99,6 +99,7 @@ public enum Keys implements CharSequence {
   ZENKAKU_HANKAKU ('\uE040');
 
   private final char keyCode;
+  private final int codePoint;
 
   Keys(Keys key) {
     this(key.charAt(0));
@@ -106,6 +107,11 @@ public enum Keys implements CharSequence {
 
   Keys(char keyCode) {
     this.keyCode = keyCode;
+    this.codePoint = String.valueOf(keyCode).codePoints().findFirst().getAsInt();
+  }
+
+  public int getCodePoint() {
+    return codePoint;
   }
 
   public char charAt(int index) {
@@ -142,6 +148,9 @@ public enum Keys implements CharSequence {
    * (CTRL/ALT/SHIFT/etc) release via a keyup event.
    *
    * Issue: http://code.google.com/p/webdriver/issues/detail?id=79
+   *
+   * @param value characters to send
+   * @return String representation of the char sequence
    */
   public static String chord(CharSequence... value) {
     return chord(Arrays.asList(value));
@@ -149,6 +158,8 @@ public enum Keys implements CharSequence {
 
   /**
    * @see #chord(CharSequence...)
+   * @param value characters to send
+   * @return String representation of the char sequence
    */
   public static String chord(Iterable<CharSequence> value) {
     StringBuilder builder = new StringBuilder();
@@ -177,5 +188,4 @@ public enum Keys implements CharSequence {
 
     return null;
   }
-
 }

@@ -19,6 +19,7 @@ package org.openqa.selenium.testing.drivers;
 
 import static org.openqa.selenium.remote.CapabilityType.HAS_NATIVE_EVENTS;
 
+import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
 public class BrowserToCapabilities {
@@ -36,16 +37,14 @@ public class BrowserToCapabilities {
 
       case ff:
         caps = DesiredCapabilities.firefox();
+        String property =
+          System.getProperty(FirefoxDriver.SystemProperty.DRIVER_USE_MARIONETTE, "true");
+        boolean useMarionette = property != null && Boolean.parseBoolean(property);
+        caps.setCapability(FirefoxDriver.MARIONETTE, useMarionette);
         break;
 
       case htmlunit:
         caps = DesiredCapabilities.htmlUnit();
-        caps.setJavascriptEnabled(false);
-        break;
-
-      case htmlunit_js:
-        caps = DesiredCapabilities.htmlUnit();
-        caps.setJavascriptEnabled(true);
         break;
 
       case ie:

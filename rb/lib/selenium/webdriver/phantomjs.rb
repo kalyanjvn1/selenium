@@ -24,18 +24,19 @@ require 'selenium/webdriver/phantomjs/bridge'
 
 module Selenium
   module WebDriver
-
     module PhantomJS
+      class << self
+        def path=(path)
+          Platform.assert_executable path
+          @path = path
+        end
+        alias_method :driver_path=, :path=
 
-      def self.path=(path)
-        Platform.assert_executable path
-        @path = path
+        def path
+          @path ||= nil
+        end
+        alias_method :driver_path, :path
       end
-
-      def self.path
-        @path ||= Platform.find_binary("phantomjs")
-      end
-
     end # PhantomJS
   end # WebDriver
 end # Selenium

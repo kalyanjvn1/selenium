@@ -17,34 +17,39 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require File.expand_path("../../spec_helper", __FILE__)
-
+require File.expand_path('../../spec_helper', __FILE__)
 
 module Selenium
   module WebDriver
     module Firefox
-
       describe Bridge do
-        let(:launcher) { double(Launcher, :launch => nil, :url => "http://localhost:4444/wd/hub") }
-        let(:resp) { {"sessionId" => "foo", "value" => @default_capabilities }}
-        let(:http) { double(Remote::Http::Default, :call => resp).as_null_object   }
-        let(:caps) { {} }
+        let(:launcher) { double(Launcher, launch: nil, quit: nil, url: 'http://localhost:4444/wd/hub') }
+        let(:resp) { {'sessionId' => 'foo', 'value' => @default_capabilities} }
+        let(:http) { double(Remote::Http::Default, call: resp).as_null_object }
+        let(:caps) { Remote::Capabilities.chrome }
 
         before do
           @default_capabilities = Remote::Capabilities.firefox.as_json
-          Remote::Capabilities.stub(:firefox).and_return(caps)
-          Launcher.stub(:new).and_return(launcher)
+          allow(Remote::Capabilities).to receive(:firefox).and_return(caps)
+          allow(Launcher).to receive(:new).and_return(launcher)
         end
 
-        it "sets the proxy capability" do
-          proxy = Proxy.new(:http => "localhost:9090")
-          caps.should_receive(:proxy=).with proxy
+        it 'accepts server URL' do
+          expect(Launcher).not_to receive(:new)
+          expect(http).to receive(:server_url=).with(URI.parse('http://example.com:4321'))
 
-          Bridge.new(:http_client => http, :proxy => proxy)
+          Bridge.new(http_client: http, url: 'http://example.com:4321')
         end
 
-        it "raises ArgumentError if passed invalid options" do
-          lambda { Bridge.new(:foo => 'bar') }.should raise_error(ArgumentError)
+        it 'sets the proxy capability' do
+          proxy = Proxy.new(http: 'localhost:9090')
+          expect(caps).to receive(:proxy=).with proxy
+
+          Bridge.new(http_client: http, proxy: proxy)
+        end
+
+        it 'raises ArgumentError if passed invalid options' do
+          expect { Bridge.new(foo: 'bar') }.to raise_error(ArgumentError)
         end
 
         it 'takes desired capabilities' do
@@ -52,15 +57,13 @@ module Selenium
           custom_caps['foo'] = 'bar'
 
           expect(http).to receive(:call) do |_, _, payload|
-            payload[:desiredCapabilities]['foo'].should == 'bar'
+            expect(payload[:desiredCapabilities]['foo']).to eq('bar')
             resp
           end
 
-          Bridge.new(:http_client => http, :desired_capabilities => custom_caps)
+          Bridge.new(http_client: http, desired_capabilities: custom_caps)
         end
       end
-
     end # Firefox
   end # WebDriver
 end # Selenium
-

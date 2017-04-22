@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require File.expand_path("../spec_helper", __FILE__)
+require_relative 'spec_helper'
 
 module Selenium
   module WebDriver
@@ -25,50 +25,53 @@ module Selenium
       before { FileReaper.reap = true }
 
       let(:tmp_file) do
-        Pathname.new(Dir.tmpdir).join(SecureRandom.uuid).tap { |f| f.mkpath }
+        Pathname.new(Dir.tmpdir).join(SecureRandom.uuid).tap(&:mkpath)
       end
 
       it 'reaps files that have been added' do
-        tmp_file.should exist
+        expect(tmp_file).to exist
 
         FileReaper << tmp_file.to_s
-        FileReaper.reap!.should be true
+        expect(FileReaper.reap!).to be true
 
-        tmp_file.should_not exist
+        expect(tmp_file).not_to exist
       end
 
       it 'fails if the file has not been added' do
-        tmp_file.should exist
+        expect(tmp_file).to exist
 
-        expect {
+        expect do
           FileReaper.reap(tmp_file.to_s)
-        }.to raise_error(Error::WebDriverError)
+        end.to raise_error(Error::WebDriverError)
       end
 
       it 'does not reap if reaping has been disabled' do
-        tmp_file.should exist
+        expect(tmp_file).to exist
 
         FileReaper.reap = false
         FileReaper << tmp_file.to_s
 
-        FileReaper.reap!.should be false
+        expect(FileReaper.reap!).to be false
 
-        tmp_file.should exist
+        expect(tmp_file).to exist
       end
 
       unless Platform.jruby? || Platform.windows?
         it 'reaps files only for the current pid' do
-          tmp_file.should exist
+          expect(tmp_file).to exist
 
           FileReaper << tmp_file.to_s
 
-          pid = fork { FileReaper.reap!; exit; exit }
+          pid = fork do
+            FileReaper.reap!
+            exit
+            exit
+          end
           Process.wait pid
 
-          tmp_file.should exist
+          expect(tmp_file).to exist
         end
       end
-
     end
-  end
-end
+  end # WebDriver
+end # Selenium

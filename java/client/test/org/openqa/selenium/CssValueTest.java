@@ -17,25 +17,20 @@
 
 package org.openqa.selenium;
 
-import org.junit.Test;
-import org.openqa.selenium.testing.Ignore;
-import org.openqa.selenium.testing.JUnit4TestBase;
-import org.openqa.selenium.testing.JavascriptEnabled;
-import org.openqa.selenium.testing.NotYetImplemented;
-
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.openqa.selenium.testing.Ignore.Driver.HTMLUNIT;
-import static org.openqa.selenium.testing.Ignore.Driver.MARIONETTE;
+import static org.openqa.selenium.testing.Driver.MARIONETTE;
+
+import org.junit.Test;
+import org.openqa.selenium.testing.Ignore;
+import org.openqa.selenium.testing.JUnit4TestBase;
 
 public class CssValueTest extends JUnit4TestBase {
 
-  @JavascriptEnabled
-  @Ignore(MARIONETTE)
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @Ignore(value = MARIONETTE, issue = "3795")
   public void testShouldPickUpStyleOfAnElement() {
     driver.get(pages.javascriptPage);
 
@@ -50,10 +45,8 @@ public class CssValueTest extends JUnit4TestBase {
     assertEquals("rgba(255, 0, 0, 1)", backgroundColour);
   }
 
-  @JavascriptEnabled
-  @Ignore(MARIONETTE)
-  @NotYetImplemented(HTMLUNIT)
   @Test
+  @Ignore(value = MARIONETTE, issue = "3795")
   public void testGetCssValueShouldReturnStandardizedColour() {
     driver.get(pages.colorPage);
 
@@ -67,8 +60,6 @@ public class CssValueTest extends JUnit4TestBase {
 
   }
 
-  @JavascriptEnabled
-  @NotYetImplemented(HTMLUNIT)
   @Test
   public void testShouldAllowInheritedStylesToBeUsed() {
     driver.get(pages.javascriptPage);

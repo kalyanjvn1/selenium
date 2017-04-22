@@ -3,17 +3,17 @@ export_file(name = 'webdriver_prefs',
   src = 'webdriver.json',
   visibility = [
     '//java/client/src/org/openqa/selenium/firefox:prefs',
+    '//dotnet/src/webdriver:webdriver',
   ],
 )
 
 
 mozilla_extension(name = 'webdriver',
   content = [
-    'extension/content/fxdriver.xul',
-    'extension/content/fx4driver.xul',
-  ] + glob(['extension/content/**/*.js']),
+    ':content',
+  ],
   components = [
-    'extension/components/httpd.js',
+    ':httpd-js',
     ':bad-cert-listener',
     ':command-processor',
     ':command-processor-xpt',
@@ -29,21 +29,6 @@ mozilla_extension(name = 'webdriver',
     ':session-store',
     ':status-xpt',
     ':synthetic-mouse',
-    '//cpp/webdriver-firefox:native-events-xpt',
-    '//cpp/webdriver-firefox:native-mouse-xpt',
-    '//cpp/webdriver-firefox:native-keyboard-xpt',
-    '//cpp/webdriver-firefox:native-ime-xpt',
-  ],
-  platforms = [
-    ':winnt-x86-msvc',
-#    { '//cpp:webdriver_firefox_esr_previous' : 'platform/Linux_x86-gcc3/components/libwebdriver-firefox-esr-previous.so' },
-#    { '//cpp:webdriver_firefox_esr_previous_64' : 'platform/Linux_x86_64-gcc3/components/libwebdriver-firefox-esr-previous.so' },
-#    { '//cpp:webdriver_firefox_esr_latest' : 'platform/Linux_x86-gcc3/components/libwebdriver-firefox-esr-latest.so' },
-#    { '//cpp:webdriver_firefox_esr_latest_64' : 'platform/Linux_x86_64-gcc3/components/libwebdriver-firefox-esr-latest.so' },
-#    { '//cpp:webdriver_firefox_previous' : 'platform/Linux_x86-gcc3/components/libwebdriver-firefox-previous.so' },
-#    { '//cpp:webdriver_firefox_latest' : 'platform/Linux_x86-gcc3/components/libwebdriver-firefox-latest.so' },
-#    { '//cpp:webdriver_firefox_previous_64' : 'platform/Linux_x86_64-gcc3/components/libwebdriver-firefox-previous.so' },
-#    { '//cpp:webdriver_firefox_latest_64' : 'platform/Linux_x86_64-gcc3/components/libwebdriver-firefox-latest.so' },
   ],
   resources = [
     ':js-resources',
@@ -53,6 +38,14 @@ mozilla_extension(name = 'webdriver',
   visibility = [
     'PUBLIC',
   ]
+)
+
+zip_file(name = 'content',
+  out = 'content.src.zip',
+  flatten = True,
+  srcs = [
+    'extension/content/fxdriver.xul',
+  ] + glob(['extension/content/**/*.js']),
 )
 
 # There has to be less attractive way of creating a zip. Ho hum.
@@ -75,22 +68,10 @@ export_file(name = 'evaluate.js',
   src = 'js/evaluate.js',
 )
 
-folder(name = 'winnt-x86-msvc',
-  out = 'WINNT_x86-msvc',
-  srcs = [
-    ':win-components',
-  ],
-)
-
-folder(name = 'win-components',
-  out = 'components',
-  srcs = [
-    '//cpp/prebuilt:imehandler-dll',
-    '//cpp/webdriver-firefox:previous-esr',
-    '//cpp/webdriver-firefox:latest-esr',
-    '//cpp/webdriver-firefox:previous',
-    '//cpp/webdriver-firefox:latest',
-  ],
+export_file(
+  name = 'httpd-js',
+  out = 'httpd.js',
+  src = 'extension/components/httpd.js',
 )
 
 mozilla_xpt(name = 'command-processor-xpt',

@@ -17,64 +17,68 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require File.expand_path("../spec_helper", __FILE__)
+require_relative 'spec_helper'
 
-describe "SearchContext" do
-  class TestSearchContext
-    attr_reader :bridge, :ref
+module Selenium
+  module WebDriver
+    describe SearchContext do
+      class TestSearchContext
+        attr_reader :bridge, :ref
 
-    include Selenium::WebDriver::SearchContext
+        include Selenium::WebDriver::SearchContext
 
-    def initialize(bridge)
-      @bridge = bridge
+        def initialize(bridge)
+          @bridge = bridge
+        end
+      end
+
+      let(:element)        { double(:Element) }
+      let(:bridge)         { double(:Bridge).as_null_object }
+      let(:search_context) { TestSearchContext.new(bridge) }
+
+      context 'finding a single element' do
+        it 'accepts a hash' do
+          expect(bridge).to receive(:find_element_by).with('id', 'bar', nil).and_return(element)
+          expect(search_context.find_element(id: 'bar')).to eq(element)
+        end
+
+        it 'accepts two arguments' do
+          expect(bridge).to receive(:find_element_by).with('id', 'bar', nil).and_return(element)
+          expect(search_context.find_element(id: 'bar')).to eq(element)
+        end
+
+        it "raises an error if given an invalid 'by'" do
+          expect do
+            search_context.find_element(foo: 'bar')
+          end.to raise_error(ArgumentError, 'cannot find element by :foo')
+        end
+
+        it 'does not modify the hash given' do
+          selector = {id: 'foo'}
+
+          search_context.find_element(selector)
+
+          expect(selector).to eq(id: 'foo')
+        end
+      end
+
+      context 'finding multiple elements' do
+        it 'accepts a hash' do
+          expect(bridge).to receive(:find_elements_by).with('id', 'bar', nil).and_return([])
+          expect(search_context.find_elements(id: 'bar')).to eq([])
+        end
+
+        it 'accepts two arguments' do
+          expect(bridge).to receive(:find_elements_by).with('id', 'bar', nil).and_return([])
+          expect(search_context.find_elements(id: 'bar')).to eq([])
+        end
+
+        it "raises an error if given an invalid 'by'" do
+          expect do
+            search_context.find_elements(foo: 'bar')
+          end.to raise_error(ArgumentError, 'cannot find elements by :foo')
+        end
+      end
     end
-  end
-
-  let(:element)        { double(:Element)}
-  let(:bridge)         { double(:Bridge).as_null_object   }
-  let(:search_context) { TestSearchContext.new(bridge)  }
-
-  context "finding a single element" do
-    it "accepts a hash" do
-      bridge.should_receive(:find_element_by).with('id', "bar", nil).and_return(element)
-      search_context.find_element(:id => "bar").should == element
-    end
-
-    it "accepts two arguments" do
-      bridge.should_receive(:find_element_by).with('id', "bar", nil).and_return(element)
-      search_context.find_element(:id, "bar").should == element
-    end
-
-    it "raises an error if given an invalid 'by'" do
-      lambda {
-        search_context.find_element(:foo => "bar")
-      }.should raise_error(ArgumentError, 'cannot find element by :foo')
-    end
-
-    it "does not modify the hash given" do
-      selector = {:id => "foo"}
-
-      search_context.find_element(selector)
-
-      selector.should == {:id => "foo"}
-    end
-  end
-
-  context "finding multiple elements" do
-    it "accepts a hash" do
-      bridge.should_receive(:find_elements_by).with('id', "bar", nil).and_return([])
-      search_context.find_elements(:id => "bar").should == []
-    end
-
-    it "accepts two arguments" do
-      bridge.should_receive(:find_elements_by).with('id', "bar", nil).and_return([])
-      search_context.find_elements(:id, "bar").should == []
-    end
-
-    it "raises an error if given an invalid 'by'" do
-      lambda {
-        search_context.find_elements(:foo => "bar")
-      }.should raise_error(ArgumentError, 'cannot find elements by :foo')
-    end
-  end
-end
+  end # WebDriver
+end # Selenium

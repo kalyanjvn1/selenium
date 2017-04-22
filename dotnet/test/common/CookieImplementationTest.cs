@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
@@ -10,6 +9,7 @@ using OpenQA.Selenium.Internal;
 namespace OpenQA.Selenium
 {
     [TestFixture]
+    [IgnoreBrowser(Browser.Safari)]
     public class CookieImplementationTest : DriverTestFixture
     {
         private Random random = new Random();
@@ -180,7 +180,7 @@ namespace OpenQA.Selenium
             AssertCookieIsPresentWithName(cookie1.Name);
             AssertCookieIsPresentWithName(cookie2.Name);
 
-            driver.Url = builder.WhereIs("simplePage.html");
+            driver.Url = builder.WhereIs("simpleTest.html");
             AssertCookieIsNotPresentWithName(cookie1.Name);
         }
 
@@ -471,12 +471,7 @@ namespace OpenQA.Selenium
         }
 
         [Test]
-        [IgnoreBrowser(Browser.IE, "Test web server does not set HttpOnly cookies")]
-        [IgnoreBrowser(Browser.Chrome, "Test web server does not set HttpOnly cookies")]
-        [IgnoreBrowser(Browser.Firefox, "Test web server does not set HttpOnly cookies")]
-        [IgnoreBrowser(Browser.HtmlUnit, "Test web server does not set HttpOnly cookies")]
-        [IgnoreBrowser(Browser.PhantomJS, "Test web server does not set HttpOnly cookies")]
-        [IgnoreBrowser(Browser.Safari, "Test web server does not set HttpOnly cookies")]
+        [IgnoreBrowser(Browser.Safari)]
         public void ShouldRetainHttpOnlyFlag()
         {
             StringBuilder url = new StringBuilder(EnvironmentManager.Instance.UrlBuilder.WhereElseIs("cookie"));
@@ -629,7 +624,6 @@ namespace OpenQA.Selenium
         }
 
         [Test]
-        [ExpectedException(typeof(WebDriverException))]
         public void ShouldNotShowCookieAddedToDifferentDomain()
         {
             if (!CheckIsOnValidHostNameForCookieTests())
@@ -640,7 +634,7 @@ namespace OpenQA.Selenium
             driver.Url = macbethPage;
             IOptions options = driver.Manage();
             Cookie cookie = new Cookie("Bart", "Simpson", EnvironmentManager.Instance.UrlBuilder.HostName + ".com", EnvironmentManager.Instance.UrlBuilder.Path, null);
-            options.Cookies.AddCookie(cookie);
+            Assert.Throws<WebDriverException>(() => options.Cookies.AddCookie(cookie));
             ReadOnlyCollection<Cookie> cookies = options.Cookies.AllCookies;
             Assert.IsFalse(cookies.Contains(cookie), "Invalid cookie was returned");
         }
